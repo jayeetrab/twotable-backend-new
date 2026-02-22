@@ -1,0 +1,27 @@
+cd ~/Documents/GitHub/twotable-backend-new
+
+-----------------------------------------------------------------------------------------
+
+find . \
+  -type f \
+  -name "*.py" \
+  -not -path "./.venv/*" \
+  -not -path "./alembic/versions/*" \
+  -not -path "./__pycache__/*" \
+  -not -path "*/__pycache__/*" \
+  | sort \
+  | while read f; do
+      echo "========================================";
+      echo "FILE: $f";
+      echo "========================================";
+      cat "$f";
+      echo "";
+    done > codebase_dump.txt
+
+-----------------------------------------------------------------------------------------
+
+grep "^FILE:" codebase_dump.txt
+
+-----------------------------------------------------------------------------------------
+
+open codebase_dump.txt
