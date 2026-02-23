@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     # Add to Settings class
     STRIPE_SECRET_KEY:     str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    GROQ_API_KEY: str = ""
+
 
 
 

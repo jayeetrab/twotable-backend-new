@@ -1,0 +1,311 @@
+{
+  "info": {
+    "name": "TwoTable — Step 2 Social Media",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1 — Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const res = pm.response.json();",
+              "if (res.access_token) {",
+              "  pm.collectionVariables.set('token', res.access_token);",
+              "  console.log('Token saved:', res.access_token);",
+              "}",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has access_token', () => pm.expect(res.access_token).to.be.a('string'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"your@email.com\",\n  \"password\": \"yourpassword\"\n}"
+        },
+        "url": "{{base_url}}/auth/login"
+      }
+    },
+    {
+      "name": "2 — GET social connections (empty)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+              "pm.test('Empty initially', () => pm.expect(pm.response.json().length).to.equal(0));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/connections"
+      }
+    },
+    {
+      "name": "3 — GET social signals (empty)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+              "pm.test('Empty initially', () => pm.expect(pm.response.json().length).to.equal(0));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/signals"
+      }
+    },
+    {
+      "name": "4 — Connect Spotify (fake token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "pm.test('Platform is spotify', () => pm.expect(res.platform).to.equal('spotify'));",
+              "pm.test('Connected true', () => pm.expect(res.connected).to.be.true);",
+              "pm.test('Has signals_extracted', () => pm.expect(res.signals_extracted).to.be.a('number'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",   "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"access_token\": \"BQA_FAKE_TOKEN_FOR_DEV_TESTING\",\n  \"refresh_token\": \"AQA_FAKE_REFRESH_TOKEN\",\n  \"platform_user_id\": \"spotify_user_123\",\n  \"platform_username\": \"jayeetra_spotify\"\n}"
+        },
+        "url": "{{base_url}}/profile/connect/spotify"
+      }
+    },
+    {
+      "name": "5 — Connect Instagram (fake token)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "pm.test('Platform is instagram', () => pm.expect(res.platform).to.equal('instagram'));",
+              "pm.test('Connected true', () => pm.expect(res.connected).to.be.true);",
+              "pm.test('Has signals_extracted', () => pm.expect(res.signals_extracted).to.be.a('number'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",   "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"access_token\": \"IGQVJ_FAKE_TOKEN_FOR_DEV_TESTING\",\n  \"platform_user_id\": \"instagram_user_456\",\n  \"platform_username\": \"jayeetra_ig\"\n}"
+        },
+        "url": "{{base_url}}/profile/connect/instagram"
+      }
+    },
+    {
+      "name": "6 — GET connections (should have 2)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "pm.test('Returns array', () => pm.expect(res).to.be.an('array'));",
+              "pm.test('Has 2 connections', () => pm.expect(res.length).to.equal(2));",
+              "const platforms = res.map(c => c.platform);",
+              "pm.test('Has spotify', () => pm.expect(platforms).to.include('spotify'));",
+              "pm.test('Has instagram', () => pm.expect(platforms).to.include('instagram'));",
+              "res.forEach(c => {",
+              "  pm.test(`${c.platform} is_active true`, () => pm.expect(c.is_active).to.be.true);",
+              "  pm.test(`${c.platform} has connected_at`, () => pm.expect(c.connected_at).to.be.a('string'));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/connections"
+      }
+    },
+    {
+      "name": "7 — GET signals (empty with fake tokens)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+              "console.log('Signals count:', pm.response.json().length);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/signals"
+      }
+    },
+    {
+      "name": "8 — Resync Spotify",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "pm.test('Platform is spotify', () => pm.expect(res.platform).to.equal('spotify'));",
+              "pm.test('Resynced true', () => pm.expect(res.resynced).to.be.true);",
+              "pm.test('Has signals_extracted', () => pm.expect(res.signals_extracted).to.be.a('number'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/resync/spotify"
+      }
+    },
+    {
+      "name": "9 — Resync Instagram",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "pm.test('Platform is instagram', () => pm.expect(res.platform).to.equal('instagram'));",
+              "pm.test('Resynced true', () => pm.expect(res.resynced).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/resync/instagram"
+      }
+    },
+    {
+      "name": "10 — Resync unconnected platform (expect 404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));",
+              "pm.test('Has detail', () => pm.expect(pm.response.json().detail).to.be.a('string'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/resync/twitter"
+      }
+    },
+    {
+      "name": "11 — Connect Spotify again (idempotent upsert)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Still connected', () => pm.expect(pm.response.json().connected).to.be.true);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type",   "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"access_token\": \"BQA_DIFFERENT_FAKE_TOKEN\",\n  \"refresh_token\": \"AQA_DIFFERENT_REFRESH\",\n  \"platform_user_id\": \"spotify_user_123\",\n  \"platform_username\": \"jayeetra_spotify\"\n}"
+        },
+        "url": "{{base_url}}/profile/connect/spotify"
+      }
+    },
+    {
+      "name": "12 — GET connections (still 2, not 3)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Still 2 connections (upsert worked)', () => pm.expect(pm.response.json().length).to.equal(2));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+        "url": "{{base_url}}/profile/social/connections"
+      }
+    }
+  ]
+}
