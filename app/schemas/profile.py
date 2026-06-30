@@ -166,40 +166,40 @@ class ProfileSetupRequest(BaseModel):
 # ── Profile read ──────────────────────────────────────────────────────────────
 
 class ProfileRead(BaseModel):
-    """Serialised UserProfile row."""
+    """Serialised user-profile document."""
     id:                      int
     user_id:                 int
-    date_of_birth:           Optional[date]
-    gender:                  Optional[Gender]
-    looking_for_gender:      Optional[Any]
-    city:                    Optional[str]
-    home_lat:                Optional[float]
-    home_lng:                Optional[float]
-    max_travel_km:           Optional[int]
-    profile_photo_url:       Optional[str]
-    relationship_goal:       Optional[RelationshipGoal]
-    relationship_stage_pref: Optional[RelationshipStagePref]
-    social_energy:           Optional[SocialEnergy]
-    communication_style:     Optional[CommunicationStyle]
-    love_language:           Optional[Any]
-    preferred_mood:          Optional[str]
-    preferred_budget:        Optional[str]
-    preferred_time:          Optional[PreferredTime]
-    alcohol:                 Optional[AlcoholPreference]
-    dietary_requirements:    Optional[str]
-    noise_tolerance:         Optional[str]
-    music_genres:            Optional[Any]
-    cuisine_preferences:     Optional[Any]
-    activities:              Optional[Any]
-    hobbies:                 Optional[Any]
-    bio:                     Optional[str]
-    fun_fact:                Optional[str]
-    onboarding_answers:      Optional[Any]
-    profile_complete:        bool
+    date_of_birth:           Optional[date]                  = None
+    gender:                  Optional[Gender]                = None
+    looking_for_gender:      Optional[Any]                   = None
+    city:                    Optional[str]                   = None
+    home_lat:                Optional[float]                 = None
+    home_lng:                Optional[float]                 = None
+    max_travel_km:           Optional[int]                   = None
+    profile_photo_url:       Optional[str]                   = None
+    relationship_goal:       Optional[RelationshipGoal]      = None
+    relationship_stage_pref: Optional[RelationshipStagePref] = None
+    social_energy:           Optional[SocialEnergy]          = None
+    communication_style:     Optional[CommunicationStyle]    = None
+    love_language:           Optional[Any]                   = None
+    preferred_mood:          Optional[str]                   = None
+    preferred_budget:        Optional[str]                   = None
+    preferred_time:          Optional[PreferredTime]         = None
+    alcohol:                 Optional[AlcoholPreference]     = None
+    dietary_requirements:    Optional[str]                   = None
+    noise_tolerance:         Optional[str]                   = None
+    music_genres:            Optional[Any]                   = None
+    cuisine_preferences:     Optional[Any]                   = None
+    activities:              Optional[Any]                   = None
+    hobbies:                 Optional[Any]                   = None
+    bio:                     Optional[str]                   = None
+    fun_fact:                Optional[str]                   = None
+    onboarding_answers:      Optional[Any]                   = None
+    profile_complete:        bool                            = False
     created_at:              datetime
     updated_at:              datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "extra": "ignore"}
 
 
 class FullProfileRead(BaseModel):
@@ -208,12 +208,17 @@ class FullProfileRead(BaseModel):
     Combines the User base record + UserProfile + availability slots.
     """
     id:           int
-    email:        str
-    full_name:    Optional[str]
+    email:        Optional[str] = None
+    phone:        Optional[str] = None
+    full_name:    Optional[str] = None
     role:         str
     is_active:    bool
+    photos:       List[str]                       = []
     profile:      Optional[ProfileRead]           = None
     availability: List[AvailabilitySlotRead]      = []
+    # Full raw onboarding answer set, so the app can re-hydrate Edit Profile / Account
+    # after a fresh login without re-asking every question.
+    onboarding:   Optional[dict]                  = None
 
     model_config = {"from_attributes": True}
 # ── Social connect request ────────────────────────────────────────────────────
@@ -250,4 +255,12 @@ class SocialSignalRead(BaseModel):
     confidence:   Optional[float]
     extracted_at: datetime
 
+    model_config = {"from_attributes": True}
+
+class EmbedMetaRead(BaseModel):
+    user_id:     int
+    model_name:  str
+    source_text: Optional[str]
+    created_at:  datetime
+    updated_at:  datetime
     model_config = {"from_attributes": True}

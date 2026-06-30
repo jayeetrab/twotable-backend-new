@@ -1,175 +1,174 @@
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Tuple
-import hashlib
+"""
+TwoTable routing engine — time-aware, multi-modal travel times via Mapbox, with a
+MongoDB cache and a graceful haversine fallback.
+
+Capabilities
+------------
+- travel_minutes(o, d, mode, depart_at)  single origin→destination ETA
+- travel_matrix(origins, dests, mode)    many×many ETAs in one Mapbox Matrix call
+- isochrone(o, minutes, mode)            reachable-area polygon (GeoJSON)
+
+Why this is more than "an API call"
+-----------------------------------
+- **Time-aware**: driving uses Mapbox `driving-traffic` with a `depart_at` so ETAs
+  reflect real congestion at the actual date time, not free-flow distance.
+- **Multi-modal**: walking / cycling / driving / driving-traffic per request — each
+  dater can travel their own way.
+- **Matrix-native**: one request scores a whole shortlist of venues, which is what
+  the fair meeting-point optimiser (services.meeting) needs.
+- **Cache-first + graceful**: every OD pair is memoised in `travel_time_cache`
+  (bucketed by hour); with no token / on any error it falls back to a calibrated
+  haversine estimate so the product never blocks on the network.
+"""
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+from typing import Optional, Sequence
 
 import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.travel_time import TravelTimeCache
+from app.db import mongo
+from app.services.geo import estimate_travel_minutes, haversine_km
+
+logger = logging.getLogger(__name__)
+
+CACHE = "travel_time_cache"
+_BASE = "https://api.mapbox.com"
+
+Coord = tuple[float, float]  # (lat, lng)
+
+# App mode → Mapbox routing profile. "drive" uses live traffic.
+_PROFILE = {
+    "drive": "driving-traffic",
+    "driving": "driving-traffic",
+    "car": "driving-traffic",
+    "walk": "walking",
+    "walking": "walking",
+    "cycle": "cycling",
+    "cycling": "cycling",
+    "bike": "cycling",
+    "transit": "driving",   # Mapbox has no transit matrix; approximate with driving
+}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def make_origin_hash(lat: float, lng: float) -> str:
-    """Round to ~500m grid and hash — avoids re-fetching nearly identical origins."""
-    rounded = f"{round(lat, 3)}:{round(lng, 3)}"
-    return hashlib.sha256(rounded.encode()).hexdigest()[:16]
+def _profile(mode: str) -> str:
+    return _PROFILE.get((mode or "drive").lower(), "driving-traffic")
 
 
-def get_time_bucket() -> str:
-    now = datetime.now()
-    hour = now.hour
-    is_weekend = now.weekday() >= 5
-    if is_weekend:
-        if hour < 12:
-            return "weekend_morning"
-        elif hour < 18:
-            return "weekend_afternoon"
-        else:
-            return "weekend_evening"
+def _hour_bucket(depart_at: Optional[datetime]) -> str:
+    t = depart_at or datetime.now(timezone.utc)
+    return t.strftime("%Y%m%d%H")
+
+
+def _key(o: Coord, d: Coord, mode: str, bucket: str) -> str:
+    return f"{round(o[0],4)},{round(o[1],4)}|{round(d[0],4)},{round(d[1],4)}|{_profile(mode)}|{bucket}"
+
+
+# ── Single origin → destination ───────────────────────────────────────────────
+
+async def travel_minutes(origin: Coord, dest: Coord, mode: str = "drive",
+                         depart_at: Optional[datetime] = None) -> float:
+    """Travel time in minutes. Cache-first; Mapbox if a token is set; haversine fallback."""
+    bucket = _hour_bucket(depart_at)
+    key = _key(origin, dest, mode, bucket)
+    db = mongo.get_db()
+    hit = await db[CACHE].find_one({"_id": key})
+    if hit and hit.get("minutes") is not None:
+        return hit["minutes"]
+
+    minutes = await _mapbox_single(origin, dest, mode, depart_at)
+    if minutes is None:                                   # no token / error → estimate
+        minutes = estimate_travel_minutes(origin[0], origin[1], dest[0], dest[1], mode)
+        source = "haversine"
     else:
-        return "weekday_evening" if hour >= 17 else "weekday_daytime"
-
-
-# ── Provider implementations ─────────────────────────────────────────────────
-
-async def _fetch_tomtom(
-    origin: Tuple[float, float],
-    destination: Tuple[float, float],
-    mode: str,
-) -> Optional[float]:
-    """
-    TomTom Routing API.
-    Returns travel minutes or None.
-    Supports drive / walk. Transit maps to drive for now.
-    """
-    travel_mode_map = {"drive": "car", "walk": "pedestrian", "transit": "car"}
-    travel_mode = travel_mode_map.get(mode, "car")
-
-    origin_str = f"{origin[0]},{origin[1]}"
-    dest_str = f"{destination[0]},{destination[1]}"
-
-    url = f"https://api.tomtom.com/routing/1/calculateRoute/{origin_str}:{dest_str}/json"
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(url, params={
-            "key": settings.ROUTING_API_KEY,
-            "travelMode": travel_mode,
-            "traffic": "true",          # live traffic by default
-            "routeType": "fastest",
-        })
-
-    if resp.status_code != 200:
-        return None
-
-    data = resp.json()
-    try:
-        seconds = data["routes"][0]["summary"]["travelTimeInSeconds"]
-        return round(seconds / 60, 1)
-    except (KeyError, IndexError):
-        return None
-
-
-async def _fetch_ors(
-    origin: Tuple[float, float],
-    destination: Tuple[float, float],
-    mode: str,
-) -> Optional[float]:
-    profile_map = {"drive": "driving-car", "walk": "foot-walking", "transit": "driving-car"}
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.post(
-            f"https://api.openrouteservice.org/v2/directions/{profile_map.get(mode, 'driving-car')}",
-            json={"coordinates": [[origin[1], origin[0]], [destination[1], destination[0]]]},
-            headers={"Authorization": settings.ROUTING_API_KEY},
-        )
-    if resp.status_code != 200:
-        return None
-    try:
-        return round(resp.json()["routes"][0]["summary"]["duration"] / 60, 1)
-    except (KeyError, IndexError):
-        return None
-
-
-async def _fetch_mapbox(
-    origin: Tuple[float, float],
-    destination: Tuple[float, float],
-    mode: str,
-) -> Optional[float]:
-    profile_map = {"drive": "driving", "walk": "walking", "transit": "driving"}
-    coords = f"{origin[1]},{origin[0]};{destination[1]},{destination[0]}"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            f"https://api.mapbox.com/directions/v5/mapbox/{profile_map.get(mode, 'driving')}/{coords}",
-            params={"access_token": settings.ROUTING_API_KEY, "overview": "false"},
-        )
-    if resp.status_code != 200:
-        return None
-    try:
-        return round(resp.json()["routes"][0]["duration"] / 60, 1)
-    except (KeyError, IndexError):
-        return None
-
-
-# ── Public interface ──────────────────────────────────────────────────────────
-
-async def get_travel_time(
-    origin: Tuple[float, float],
-    destination: Tuple[float, float],
-    venue_id: int,
-    db: AsyncSession,
-    mode: str = "drive",
-) -> Optional[float]:
-    """
-    Returns travel time in minutes, origin → destination.
-    Cache-first. Only calls the routing API on a miss or expired cache entry.
-    """
-    ttl = timedelta(hours=settings.TRAVEL_TIME_CACHE_TTL_HOURS)
-    origin_hash = make_origin_hash(*origin)
-    time_bucket = get_time_bucket()
-
-    # Cache lookup
-    result = await db.execute(
-        select(TravelTimeCache).where(
-            TravelTimeCache.origin_hash == origin_hash,
-            TravelTimeCache.venue_id == venue_id,
-            TravelTimeCache.mode == mode,
-            TravelTimeCache.time_bucket == time_bucket,
-        )
+        source = "mapbox"
+    await db[CACHE].update_one(
+        {"_id": key},
+        {"$set": {"minutes": minutes, "source": source, "updated_at": datetime.now(timezone.utc)}},
+        upsert=True,
     )
-    cached = result.scalar_one_or_none()
+    return minutes
 
-    if cached:
-        age = datetime.now(timezone.utc) - cached.last_checked_at
-        if age < ttl:
-            return cached.travel_minutes
-        await db.delete(cached)
-        await db.commit()
 
-    # API call
-    provider = settings.ROUTING_PROVIDER
-    if provider == "tomtom":
-        minutes = await _fetch_tomtom(origin, destination, mode)
-    elif provider == "openrouteservice":
-        minutes = await _fetch_ors(origin, destination, mode)
-    elif provider == "mapbox":
-        minutes = await _fetch_mapbox(origin, destination, mode)
-    else:
-        raise ValueError(f"Unknown routing provider: {provider}")
-
-    if minutes is None:
+async def _mapbox_single(origin: Coord, dest: Coord, mode: str,
+                        depart_at: Optional[datetime]) -> Optional[float]:
+    if not settings.MAPBOX_TOKEN:
+        return None
+    prof = _profile(mode)
+    coords = f"{origin[1]},{origin[0]};{dest[1]},{dest[0]}"   # lng,lat;lng,lat
+    params = {"access_token": settings.MAPBOX_TOKEN, "overview": "false", "annotations": "duration"}
+    if prof == "driving-traffic" and depart_at:
+        params["depart_at"] = depart_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(f"{_BASE}/directions/v5/mapbox/{prof}/{coords}", params=params)
+        if r.status_code != 200:
+            return None
+        routes = r.json().get("routes") or []
+        return round(routes[0]["duration"] / 60.0, 1) if routes else None
+    except Exception as exc:
+        logger.warning("Mapbox directions failed: %s", exc)
         return None
 
-    # Write to cache
-    db.add(TravelTimeCache(
-        origin_hash=origin_hash,
-        venue_id=venue_id,
-        mode=mode,
-        time_bucket=time_bucket,
-        travel_minutes=minutes,
-        last_checked_at=datetime.now(timezone.utc),
-    ))
-    await db.commit()
 
-    return minutes
+# ── Matrix: one origin → many destinations ────────────────────────────────────
+
+async def travel_matrix(origin: Coord, destinations: Sequence[Coord], mode: str = "drive",
+                        depart_at: Optional[datetime] = None) -> list[Optional[float]]:
+    """Minutes from one origin to each destination. One Mapbox Matrix call (≤24 dests)."""
+    if not destinations:
+        return []
+    mapbox = await _mapbox_matrix(origin, destinations, mode)
+    if mapbox is not None:
+        return mapbox
+    # Fallback: per-destination haversine estimate.
+    return [estimate_travel_minutes(origin[0], origin[1], d[0], d[1], mode) for d in destinations]
+
+
+async def _mapbox_matrix(origin: Coord, destinations: Sequence[Coord],
+                        mode: str) -> Optional[list[Optional[float]]]:
+    if not settings.MAPBOX_TOKEN:
+        return None
+    prof = _profile(mode)
+    limit = 9 if prof == "driving-traffic" else 24       # Mapbox per-request coord caps
+    out: list[Optional[float]] = []
+    try:
+        for i in range(0, len(destinations), limit):
+            chunk = destinations[i:i + limit]
+            pts = [origin] + list(chunk)
+            coords = ";".join(f"{p[1]},{p[0]}" for p in pts)
+            dest_idx = ";".join(str(j) for j in range(1, len(pts)))
+            params = {"access_token": settings.MAPBOX_TOKEN, "sources": "0",
+                      "destinations": dest_idx, "annotations": "duration"}
+            async with httpx.AsyncClient(timeout=10.0) as c:
+                r = await c.get(f"{_BASE}/directions-matrix/v1/mapbox/{prof}/{coords}", params=params)
+            if r.status_code != 200:
+                return None
+            durs = (r.json().get("durations") or [[None]])[0]
+            out.extend(round(s / 60.0, 1) if s is not None else None for s in durs)
+        return out
+    except Exception as exc:
+        logger.warning("Mapbox matrix failed: %s", exc)
+        return None
+
+
+# ── Isochrone: reachable area within N minutes ────────────────────────────────
+
+async def isochrone(origin: Coord, minutes: int, mode: str = "drive") -> Optional[dict]:
+    """GeoJSON polygon of everywhere reachable within `minutes`. None without a token."""
+    if not settings.MAPBOX_TOKEN:
+        return None
+    prof = _profile(mode).replace("driving-traffic", "driving")  # isochrone has no traffic profile
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as c:
+            r = await c.get(
+                f"{_BASE}/isochrone/v1/mapbox/{prof}/{origin[1]},{origin[0]}",
+                params={"contours_minutes": min(minutes, 60), "polygons": "true",
+                        "access_token": settings.MAPBOX_TOKEN},
+            )
+        return r.json() if r.status_code == 200 else None
+    except Exception as exc:
+        logger.warning("Mapbox isochrone failed: %s", exc)
+        return None

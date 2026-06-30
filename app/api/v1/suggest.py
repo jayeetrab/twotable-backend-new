@@ -3,11 +3,8 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
-from app.db.session import get_db
-from app.models.user import User
 from app.schemas.suggest import SuggestRequest, SuggestResponse
 from app.services.matcher import suggest_venues
 
@@ -18,14 +15,13 @@ router = APIRouter(prefix="/venues", tags=["suggest"])
 @router.post("/suggest", response_model=SuggestResponse)
 async def suggest(
     payload: SuggestRequest,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: dict = Depends(get_current_user),
 ):
     try:
-        suggestions, intent_text = await suggest_venues(db=db, req=payload)
+        suggestions, intent_text = await suggest_venues(req=payload)
     except Exception as exc:
         logger.exception("Matcher failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Matcher error: {str(exc)}")
+        raise HTTPException(status_code=500, detail=f"Matcher error: {exc}")
 
     if not suggestions:
         raise HTTPException(

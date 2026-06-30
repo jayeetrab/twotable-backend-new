@@ -1,0 +1,254 @@
+{
+  "info": {
+    "_postman_id": "6f44e74b-a578-4677-94f3-dff10479c54a",
+    "name": "IDS",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "https://fxcommonapi.idsnext.live//Parameters/GetParameter",
+      "id": "2f5d982f-475c-46cc-a21e-1444d24a769c",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "9_QtL9lheLr7DyeEPrPPKft7BuLHOrYYb2-nW0Em8oQJBIjZnLkE1tfpMtR64TtJKVwUZfU7A5EgJQWZGt9-DzYFSshUsoyNXMOOpzNFwe18Cv5W-pCX0ovDww-vWqgkbxTp7OuRCHApyZCehJ-OoqxgIJ6gjYOQncbAeVlejh6RG7zBFbxvJhit5aRgsAMgMC2IeOMvBOKG8W0t2WvSnOFXEfUiwX4_BWdZWC333eh0aAq9aslt0cRyjSz1-7dO6IMHhfQns-NbuE0kNhvOtAYzQL5zkBLjVqGvt2EXtC0Y_Kryvn9q9Ex8aWgkEcaE0SudV1uMoOIeHDVHr5n3jTfkn2um3RaQqWZBisu-_2fo0opoT960KDhlqzI5HmuDdrkyvivdYnly6eqalGRELc5_2QlbTefjspiO0ozeRnvUIWY9HOWhXHHpsK_gn1lNf-Rt6sSMAXAoBCvJ3DJ-L7EbWs7-ytsWA0fdK08ag90f2b7JG5HfBo28AXX-xKTLcm-X-R49TjlA_Wsc5GCuPg",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"UserID\":\"jayeetra.uk@gmail.com\",\n    \"PmsCustCode\":\"10466\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fxcommonapi.idsnext.live/Parameters/GetParameter",
+          "protocol": "https",
+          "host": [
+            "fxcommonapi",
+            "idsnext",
+            "live"
+          ],
+          "path": [
+            "Parameters",
+            "GetParameter"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "https://fxreglookandbookapi.idsnext.live/LookAndBook/GetFilterByMasterData",
+      "id": "07dc5992-2e95-40bd-97fc-6e9bedab6904",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "hWPEcpukc2Lw-EGpQ2fx3VmPtLuu9PoTXDR_AvSdnYofdkRLOM4fftAfhfWTT5E88dbNcRdojTk2vSYbZ8V2ZwauZas6eYhjrYE0Z7x1GP1GYFBSJ7kxoehKYMvd49UrPGQTVoUJdlGH2G_ac8prvqFgmPyA_7mMt9cXJvFAMf2M-iXS3ao0vB7-ks26FhT6Zx-YRRsgYv0fhOQMJIyU0RBCuaUcMXidweQe8ZEESrDKBzd2OG2iaFfcsoJO5fnjayC5YGXXXR5yMVwrF4p8sj6kEW5LxkzQPk7NqdSzVyBji2bky_QDKPxTaptnQFa-LYnFRQcxCCatushGWEdfUpCd7ynigdFMo4QSZe9uLwxbu4r4Bn6SAl4f2eLW7E8tzTUNXVSCx3BrEa_AH6UpzYtYetqFH2-gv134UbT8cjVVnD7CbMJx03LSd8EWHfroFaGE2za5ywV8YPbaw86mUWWWyNnnFANP8ZFFEBBn-OFzCJVVIIT0VKFUmYhgWF-nnLn8mNphA7N9ExeQGxieaQ",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"UserID\": \"jayeetra.uk@gmail.com\", \"PmsCustCode\": \"10466\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fxreglookandbookapi.idsnext.live/LookAndBook/GetFilterByMasterData",
+          "protocol": "https",
+          "host": [
+            "fxreglookandbookapi",
+            "idsnext",
+            "live"
+          ],
+          "path": [
+            "LookAndBook",
+            "GetFilterByMasterData"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "https://fxreglookandbookapi.idsnext.live/LookAndBook/GetFilterByMasterData Copy",
+      "id": "047051cc-c584-4c48-8fdc-128d18e302e8",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "hWPEcpukc2Lw-EGpQ2fx3VmPtLuu9PoTXDR_AvSdnYofdkRLOM4fftAfhfWTT5E88dbNcRdojTk2vSYbZ8V2ZwauZas6eYhjrYE0Z7x1GP1GYFBSJ7kxoehKYMvd49UrPGQTVoUJdlGH2G_ac8prvqFgmPyA_7mMt9cXJvFAMf2M-iXS3ao0vB7-ks26FhT6Zx-YRRsgYv0fhOQMJIyU0RBCuaUcMXidweQe8ZEESrDKBzd2OG2iaFfcsoJO5fnjayC5YGXXXR5yMVwrF4p8sj6kEW5LxkzQPk7NqdSzVyBji2bky_QDKPxTaptnQFa-LYnFRQcxCCatushGWEdfUpCd7ynigdFMo4QSZe9uLwxbu4r4Bn6SAl4f2eLW7E8tzTUNXVSCx3BrEa_AH6UpzYtYetqFH2-gv134UbT8cjVVnD7CbMJx03LSd8EWHfroFaGE2za5ywV8YPbaw86mUWWWyNnnFANP8ZFFEBBn-OFzCJVVIIT0VKFUmYhgWF-nnLn8mNphA7N9ExeQGxieaQ",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"UserID\": \"jayeetra.uk@gmail.com\", \"PmsCustCode\": \"10466\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://fxreglookandbookapi.idsnext.live/LookAndBook/GetFilterByMasterData",
+          "protocol": "https",
+          "host": [
+            "fxreglookandbookapi",
+            "idsnext",
+            "live"
+          ],
+          "path": [
+            "LookAndBook",
+            "GetFilterByMasterData"
+          ]
+        }
+      },
+      "response": [
+        {
+          "id": "bc358cb4-6514-453f-b5d0-6c6cc8fd191f",
+          "name": "https://fxreglookandbookapi.idsnext.live/LookAndBook/GetFilterByMasterData Copy",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "ARRAffinity=5901ea34eb846b4be808d2f588e94862fc184d0f3a11a7438db3d396e2e021a4;Path=/;HttpOnly;Secure;Domain=fxregistrationapi.azurewebsites.net",
+                "type": "text",
+                "uuid": "f85dbcc1-2c3e-4fc0-b7e0-dbc20fef4ac9"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"LoginID\": \"jayeetra.uk@gmail.com\",\n    \"PmsCustCode\": 10466,\n    \"RequestType\": \"Room\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://fxregistrationapi.azurewebsites.net/Registration/GetLinkRoomGroupLinkRooms",
+              "protocol": "https",
+              "host": [
+                "fxregistrationapi",
+                "azurewebsites",
+                "net"
+              ],
+              "path": [
+                "Registration",
+                "GetLinkRoomGroupLinkRooms"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Length",
+              "value": "2375"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Date",
+              "value": "Fri, 13 Mar 2026 05:37:47 GMT"
+            },
+            {
+              "key": "Server",
+              "value": "Microsoft-IIS/10.0"
+            },
+            {
+              "key": "Access-Control-Expose-Headers",
+              "value": "Request-Context"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            },
+            {
+              "key": "Content-Encoding",
+              "value": "gzip"
+            },
+            {
+              "key": "Expires",
+              "value": "-1"
+            },
+            {
+              "key": "Pragma",
+              "value": "no-cache"
+            },
+            {
+              "key": "Vary",
+              "value": "Accept-Encoding"
+            },
+            {
+              "key": "X-AspNet-Version",
+              "value": "4.0.30319"
+            },
+            {
+              "key": "Request-Context",
+              "value": "appId=cid-v1:1c934592-7c58-4cba-841a-bbbc9e4c04bd"
+            },
+            {
+              "key": "X-Powered-By",
+              "value": "ASP.NET"
+            }
+          ],
+          "cookie": [],
+          "responseTime": "2026-03-13T05:40:52.601Z",
+          "body": "{\n    \"Status\": \"Success\",\n    \"StatusCode\": \"FCS0001\",\n    \"StatusDescription\": \"Executed Successfully\",\n    \"Response\": [\n        {\n            \"RoomNumber\": \"1000\",\n            \"RoomName\": \"1000\",\n            \"GuestName\": \"Mr. Conclon Peter\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 13,\n            \"RoomReferenceNumber\": 20\n        },\n        {\n            \"RoomNumber\": \"1002\",\n            \"RoomName\": \"1002\",\n            \"GuestName\": \"Mr. Nurdin Nadra\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 26,\n            \"RoomReferenceNumber\": 40\n        },\n        {\n            \"RoomNumber\": \"1003\",\n            \"RoomName\": \"1003\",\n            \"GuestName\": \"Mr. Jamila Adam\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 27,\n            \"RoomReferenceNumber\": 41\n        },\n        {\n            \"RoomNumber\": \"1005\",\n            \"RoomName\": \"1005\",\n            \"GuestName\": \"Mr. Sarah Hurst\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 28,\n            \"RoomReferenceNumber\": 42\n        },\n        {\n            \"RoomNumber\": \"1007\",\n            \"RoomName\": \"1007\",\n            \"GuestName\": \"Mr. Notghi Alp\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 29,\n            \"RoomReferenceNumber\": 43\n        },\n        {\n            \"RoomNumber\": \"1008\",\n            \"RoomName\": \"1008\",\n            \"GuestName\": \"Mr. Moshy Benjamin\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 30,\n            \"RoomReferenceNumber\": 44\n        },\n        {\n            \"RoomNumber\": \"1009\",\n            \"RoomName\": \"1009\",\n            \"GuestName\": \"Mr. Conor Moran\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 31,\n            \"RoomReferenceNumber\": 45\n        },\n        {\n            \"RoomNumber\": \"1103\",\n            \"RoomName\": \"1103\",\n            \"GuestName\": \"Mr. Heard Francesca\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 68,\n            \"RoomReferenceNumber\": 84\n        },\n        {\n            \"RoomNumber\": \"1104\",\n            \"RoomName\": \"1104\",\n            \"GuestName\": \"Mr. Jones Sara\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 67,\n            \"RoomReferenceNumber\": 132\n        },\n        {\n            \"RoomNumber\": \"1401\",\n            \"RoomName\": \"1401\",\n            \"GuestName\": \"Mr. Kirsty Keen\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 62,\n            \"RoomReferenceNumber\": 78\n        },\n        {\n            \"RoomNumber\": \"1402\",\n            \"RoomName\": \"1402\",\n            \"GuestName\": \"Mr. BRANNAN STEPHEN\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 34,\n            \"RoomReferenceNumber\": 48\n        },\n        {\n            \"RoomNumber\": \"1403\",\n            \"RoomName\": \"1403\",\n            \"GuestName\": \"Mr. REILLY PETE\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 35,\n            \"RoomReferenceNumber\": 49\n        },\n        {\n            \"RoomNumber\": \"1404\",\n            \"RoomName\": \"1404\",\n            \"GuestName\": \"Mr. MCGILLIVRAY KEIR\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 36,\n            \"RoomReferenceNumber\": 50\n        },\n        {\n            \"RoomNumber\": \"1405\",\n            \"RoomName\": \"1405\",\n            \"GuestName\": \"Mr. CONWAY RONAN\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 37,\n            \"RoomReferenceNumber\": 51\n        },\n        {\n            \"RoomNumber\": \"1407\",\n            \"RoomName\": \"1407\",\n            \"GuestName\": \"Mr. PERRIN KENNETH\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 39,\n            \"RoomReferenceNumber\": 53\n        },\n        {\n            \"RoomNumber\": \"1408\",\n            \"RoomName\": \"1408\",\n            \"GuestName\": \"Mr. DAVITT ANDREW\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 40,\n            \"RoomReferenceNumber\": 54\n        },\n        {\n            \"RoomNumber\": \"1409\",\n            \"RoomName\": \"1409\",\n            \"GuestName\": \"Mr. RYAN STANLEY\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 41,\n            \"RoomReferenceNumber\": 55\n        },\n        {\n            \"RoomNumber\": \"1500\",\n            \"RoomName\": \"1500\",\n            \"GuestName\": \"Mr. FINLEY SIMON\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 42,\n            \"RoomReferenceNumber\": 56\n        },\n        {\n            \"RoomNumber\": \"1505\",\n            \"RoomName\": \"1505\",\n            \"GuestName\": \"Mr. AITCHISON MICK\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 33,\n            \"RoomReferenceNumber\": 47\n        },\n        {\n            \"RoomNumber\": \"1506\",\n            \"RoomName\": \"1506\",\n            \"GuestName\": \"Mr. ALLEN PETE\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 43,\n            \"RoomReferenceNumber\": 57\n        },\n        {\n            \"RoomNumber\": \"1508\",\n            \"RoomName\": \"1508\",\n            \"GuestName\": \"Mr. BAKER DAVID\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 38,\n            \"RoomReferenceNumber\": 52\n        },\n        {\n            \"RoomNumber\": \"1602\",\n            \"RoomName\": \"1602\",\n            \"GuestName\": \"Mr. WILLSON ADRIAN\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 45,\n            \"RoomReferenceNumber\": 59\n        },\n        {\n            \"RoomNumber\": \"1603\",\n            \"RoomName\": \"1603\",\n            \"GuestName\": \"Mr. Hutton Paul\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 3,\n            \"RoomReferenceNumber\": 19\n        },\n        {\n            \"RoomNumber\": \"1703\",\n            \"RoomName\": \"1703\",\n            \"GuestName\": \"Mr. SERGEANT WILL\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 46,\n            \"RoomReferenceNumber\": 60\n        },\n        {\n            \"RoomNumber\": \"403\",\n            \"RoomName\": \"403\",\n            \"GuestName\": \"Mr. Griffiths Gareth\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 9,\n            \"RoomReferenceNumber\": 13\n        },\n        {\n            \"RoomNumber\": \"404\",\n            \"RoomName\": \"404\",\n            \"GuestName\": \"Mr. Griffiths Gareth\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 9,\n            \"RoomReferenceNumber\": 14\n        },\n        {\n            \"RoomNumber\": \"504\",\n            \"RoomName\": \"504\",\n            \"GuestName\": \"Mr. Barrett Lewis\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 10,\n            \"RoomReferenceNumber\": 15\n        },\n        {\n            \"RoomNumber\": \"505\",\n            \"RoomName\": \"505\",\n            \"GuestName\": \"Mr. Knight Jason\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 49,\n            \"RoomReferenceNumber\": 130\n        },\n        {\n            \"RoomNumber\": \"506\",\n            \"RoomName\": \"506\",\n            \"GuestName\": \"Mr. PUGH ANgela\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/15/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 50,\n            \"RoomReferenceNumber\": 65\n        },\n        {\n            \"RoomNumber\": \"507\",\n            \"RoomName\": \"507\",\n            \"GuestName\": \"Mr. Knight Jason\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 49,\n            \"RoomReferenceNumber\": 131\n        },\n        {\n            \"RoomNumber\": \"508\",\n            \"RoomName\": \"508\",\n            \"GuestName\": \"Mr. Pugh Alun\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/15/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 48,\n            \"RoomReferenceNumber\": 62\n        },\n        {\n            \"RoomNumber\": \"509\",\n            \"RoomName\": \"509\",\n            \"GuestName\": \"Mr. Knight Jason\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 47,\n            \"RoomReferenceNumber\": 129\n        },\n        {\n            \"RoomNumber\": \"510\",\n            \"RoomName\": \"510\",\n            \"GuestName\": \"Mr. ANgela PUGH\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/15/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 23,\n            \"RoomReferenceNumber\": 35\n        },\n        {\n            \"RoomNumber\": \"512\",\n            \"RoomName\": \"512\",\n            \"GuestName\": \"Mr. PUGH ANgela\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/15/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 50,\n            \"RoomReferenceNumber\": 66\n        },\n        {\n            \"RoomNumber\": \"513\",\n            \"RoomName\": \"513\",\n            \"GuestName\": \"Mr. Newman Adam\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 55,\n            \"RoomReferenceNumber\": 71\n        },\n        {\n            \"RoomNumber\": \"600\",\n            \"RoomName\": \"600\",\n            \"GuestName\": \"Mr. Sutherland Eric\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 51,\n            \"RoomReferenceNumber\": 67\n        },\n        {\n            \"RoomNumber\": \"601\",\n            \"RoomName\": \"601\",\n            \"GuestName\": \"Mr. Wilson Kane\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 52,\n            \"RoomReferenceNumber\": 68\n        },\n        {\n            \"RoomNumber\": \"603\",\n            \"RoomName\": \"603\",\n            \"GuestName\": \"Mr. Murphy Sam\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 54,\n            \"RoomReferenceNumber\": 70\n        },\n        {\n            \"RoomNumber\": \"605\",\n            \"RoomName\": \"605\",\n            \"GuestName\": \"Mr. Clarke Gary\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 56,\n            \"RoomReferenceNumber\": 72\n        },\n        {\n            \"RoomNumber\": \"606\",\n            \"RoomName\": \"606\",\n            \"GuestName\": \"Mr. Garaghon Wesly\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 57,\n            \"RoomReferenceNumber\": 73\n        },\n        {\n            \"RoomNumber\": \"607\",\n            \"RoomName\": \"607\",\n            \"GuestName\": \"Mr. Williams Dec\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 58,\n            \"RoomReferenceNumber\": 74\n        },\n        {\n            \"RoomNumber\": \"608\",\n            \"RoomName\": \"608\",\n            \"GuestName\": \"Mr. REACT ERIC\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 77,\n            \"RoomReferenceNumber\": 93\n        },\n        {\n            \"RoomNumber\": \"609\",\n            \"RoomName\": \"609\",\n            \"GuestName\": \"Mr. Gilbert Steve\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 59,\n            \"RoomReferenceNumber\": 75\n        },\n        {\n            \"RoomNumber\": \"610\",\n            \"RoomName\": \"610\",\n            \"GuestName\": \"Mr. Timms Stuart\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 60,\n            \"RoomReferenceNumber\": 76\n        },\n        {\n            \"RoomNumber\": \"611\",\n            \"RoomName\": \"611\",\n            \"GuestName\": \"Mr. Rendle Richard\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 61,\n            \"RoomReferenceNumber\": 77\n        },\n        {\n            \"RoomNumber\": \"700\",\n            \"RoomName\": \"700\",\n            \"GuestName\": \"Mr. Price Michael\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 11,\n            \"RoomReferenceNumber\": 16\n        },\n        {\n            \"RoomNumber\": \"701\",\n            \"RoomName\": \"701\",\n            \"GuestName\": \"Mr. Ellis Arthur\",\n            \"ArrivalDateTime\": \"03/11/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/13/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 7,\n            \"RoomReferenceNumber\": 11\n        },\n        {\n            \"RoomNumber\": \"800\",\n            \"RoomName\": \"800\",\n            \"GuestName\": \"Mr. Healy Rachel\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 63,\n            \"RoomReferenceNumber\": 79\n        },\n        {\n            \"RoomNumber\": \"801\",\n            \"RoomName\": \"801\",\n            \"GuestName\": \"Mr. Spencer Matt\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 64,\n            \"RoomReferenceNumber\": 80\n        },\n        {\n            \"RoomNumber\": \"803\",\n            \"RoomName\": \"803\",\n            \"GuestName\": \"Mr. Mallon Paddy\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 76,\n            \"RoomReferenceNumber\": 92\n        },\n        {\n            \"RoomNumber\": \"804\",\n            \"RoomName\": \"804\",\n            \"GuestName\": \"Mr. Sabin Caroline\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 66,\n            \"RoomReferenceNumber\": 82\n        },\n        {\n            \"RoomNumber\": \"805\",\n            \"RoomName\": \"805\",\n            \"GuestName\": \"Mr. Sean Booker\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 17,\n            \"RoomReferenceNumber\": 29\n        },\n        {\n            \"RoomNumber\": \"806\",\n            \"RoomName\": \"806\",\n            \"GuestName\": \"Mr. Keegan Katie\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 14,\n            \"RoomReferenceNumber\": 21\n        },\n        {\n            \"RoomNumber\": \"901\",\n            \"RoomName\": \"901\",\n            \"GuestName\": \"Mr. Rajapakse Shermila\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 69,\n            \"RoomReferenceNumber\": 85\n        },\n        {\n            \"RoomNumber\": \"902\",\n            \"RoomName\": \"902\",\n            \"GuestName\": \"Mr. McCluskey Ryan\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 70,\n            \"RoomReferenceNumber\": 86\n        },\n        {\n            \"RoomNumber\": \"903\",\n            \"RoomName\": \"903\",\n            \"GuestName\": \"Mr. Blackaby Jessica\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 71,\n            \"RoomReferenceNumber\": 87\n        },\n        {\n            \"RoomNumber\": \"904\",\n            \"RoomName\": \"904\",\n            \"GuestName\": \"Mr. Kieran Mclaughlin\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 21,\n            \"RoomReferenceNumber\": 33\n        },\n        {\n            \"RoomNumber\": \"905\",\n            \"RoomName\": \"905\",\n            \"GuestName\": \"Mr. Stuart Bankier\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 16,\n            \"RoomReferenceNumber\": 28\n        },\n        {\n            \"RoomNumber\": \"906\",\n            \"RoomName\": \"906\",\n            \"GuestName\": \"Mr. Quail Nat\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 72,\n            \"RoomReferenceNumber\": 88\n        },\n        {\n            \"RoomNumber\": \"907\",\n            \"RoomName\": \"907\",\n            \"GuestName\": \"Mr. McIntyre Michelle\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 73,\n            \"RoomReferenceNumber\": 89\n        },\n        {\n            \"RoomNumber\": \"908\",\n            \"RoomName\": \"908\",\n            \"GuestName\": \"Mr. Ramsbottom Tara\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 74,\n            \"RoomReferenceNumber\": 90\n        },\n        {\n            \"RoomNumber\": \"909\",\n            \"RoomName\": \"909\",\n            \"GuestName\": \"Mr. Ellen Newman\",\n            \"ArrivalDateTime\": \"03/12/2026 15:00:00\",\n            \"DepartureDateTime\": \"03/14/2026 12:00:00\",\n            \"CompanyName\": \"\",\n            \"TravelAgentName\": \"\",\n            \"FolioNumber\": 1,\n            \"ReservationNumber\": 75,\n            \"RoomReferenceNumber\": 91\n        }\n    ]\n}"
+        }
+      ]
+    },
+    {
+      "name": "New Request",
+      "id": "b66826b2-0619-49fe-b348-240aeb9725a5",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "New Request",
+      "id": "2385175e-0db0-4cab-a79e-75a214eeab83",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    }
+  ]
+}

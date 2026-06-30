@@ -2,31 +2,20 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import List
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.core.deps import get_current_user
-from app.db.session import get_db
-from app.models.user import User
-from app.models.user_availability import UserAvailability
-from app.models.user_profile import UserProfile
+from app.db import mongo
+from app.services import geocoding
 from app.schemas.profile import (
     AvailabilitySetRequest,
     AvailabilitySlotRead,
     FullProfileRead,
     ProfileRead,
     ProfileSetupRequest,
-    SocialConnectionRead,
-    SocialSignalRead,
-    SocialConnectRequest,
 )
-from app.models.user_social_connection import UserSocialConnection, SocialPlatform
-from app.models.user_social_signal import UserSocialSignal
-from app.services.social.pipeline import run_instagram_pipeline, run_spotify_pipeline
-
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -34,64 +23,59 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _compute_profile_complete(p: UserProfile) -> bool:
-    """
-    Profile is considered complete when the minimum required fields are set.
-    This flag is used by the matching engine (Stage A hard filter).
-    """
-    return all([
-        p.date_of_birth is not None,
-        p.gender is not None,
-        bool(p.looking_for_gender),
-        bool(p.city),
-        p.home_lat is not None,
-        p.home_lng is not None,
-        p.relationship_goal is not None,
-        p.social_energy is not None,
-        bool(p.bio),
-        bool(p.onboarding_answers),
-    ])
+_REQUIRED_FOR_COMPLETE = [
+    "date_of_birth", "gender", "looking_for_gender", "city",
+    "home_lat", "home_lng", "relationship_goal", "social_energy",
+    "bio", "onboarding_answers",
+]
 
 
-async def _get_profile(db: AsyncSession, user_id: int) -> UserProfile | None:
-    result = await db.execute(
-        select(UserProfile).where(UserProfile.user_id == user_id)
+def _compute_profile_complete(doc: dict) -> bool:
+    """Profile is complete once the matcher's minimum required fields are set."""
+    return all(bool(doc.get(field)) for field in _REQUIRED_FOR_COMPLETE)
+
+
+def _profile_read(doc: dict) -> ProfileRead:
+    data = {**doc, "id": doc["_id"]}
+    return ProfileRead.model_validate(data)
+
+
+def _availability_read(doc: dict) -> AvailabilitySlotRead:
+    return AvailabilitySlotRead.model_validate({**doc, "id": doc["_id"]})
+
+
+async def _get_profile(user_id: int) -> dict | None:
+    db = mongo.get_db()
+    return await db[mongo.PROFILES].find_one({"user_id": user_id})
+
+
+async def _get_availability(user_id: int) -> list[dict]:
+    db = mongo.get_db()
+    cursor = db[mongo.AVAILABILITY].find({"user_id": user_id}).sort(
+        [("weekday", 1), ("start_time", 1)]
     )
-    return result.scalar_one_or_none()
-
-
-async def _get_availability(db: AsyncSession, user_id: int) -> list[UserAvailability]:
-    result = await db.execute(
-        select(UserAvailability)
-        .where(UserAvailability.user_id == user_id)
-        .order_by(UserAvailability.weekday, UserAvailability.start_time)
-    )
-    return list(result.scalars().all())
+    return await cursor.to_list(length=None)
 
 
 # ── GET /profile/me ───────────────────────────────────────────────────────────
 
 @router.get("/me", response_model=FullProfileRead)
-async def get_my_profile(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Return the full composite profile for the authenticated user.
-    `profile` is null if the user has not yet run /profile/setup.
-    `availability` is an empty list until /profile/availability is called.
-    """
-    profile      = await _get_profile(db, current_user.id)
-    availability = await _get_availability(db, current_user.id)
-
+async def get_my_profile(current_user: dict = Depends(get_current_user)):
+    """Full composite profile. `profile` is null until /profile/setup runs."""
+    profile = await _get_profile(current_user["_id"])
+    availability = await _get_availability(current_user["_id"])
+    photo_urls = [mongo.photo_url(p) for p in ((profile or {}).get("photos") or [])]
     return FullProfileRead(
-        id=current_user.id,
-        email=current_user.email,
-        full_name=current_user.full_name,
-        role=current_user.role.value,
-        is_active=current_user.is_active,
-        profile=ProfileRead.model_validate(profile) if profile else None,
-        availability=[AvailabilitySlotRead.model_validate(a) for a in availability],
+        id=current_user["_id"],
+        email=current_user.get("email"),
+        phone=current_user.get("phone"),
+        full_name=current_user.get("full_name"),
+        role=current_user.get("role", "dater"),
+        is_active=current_user.get("is_active", True),
+        photos=photo_urls,
+        profile=_profile_read(profile) if profile else None,
+        availability=[_availability_read(a) for a in availability],
+        onboarding=(profile or {}).get("onboarding_raw"),
     )
 
 
@@ -100,72 +84,127 @@ async def get_my_profile(
 @router.post("/setup", response_model=ProfileRead, status_code=status.HTTP_200_OK)
 async def setup_profile(
     payload: ProfileSetupRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Create or update the extended user profile (upsert).
-    Only provided fields are written — omitted fields are left unchanged.
-    Sets profile_complete=True when all required fields are present.
-
-    Also syncs preferred_mood, preferred_budget, preferred_stage,
-    dietary_requirements back to the users table so that /venues/suggest
-    continues to work with user defaults.
+    Upsert the extended user profile. Only provided fields are written.
+    Sets profile_complete=True once all required fields are present, and syncs
+    a few fields back to the user doc for /venues/suggest defaults.
     """
-    profile = await _get_profile(db, current_user.id)
-    data    = payload.model_dump(exclude_unset=True)
+    db = mongo.get_db()
+    now = datetime.now(timezone.utc)
+    # mode="json" turns date/time/enums into JSON-safe primitives for Mongo
+    data = payload.model_dump(exclude_unset=True, mode="json")
 
-    # Flatten onboarding_answers from Pydantic model → plain dict for JSONB
-    if "onboarding_answers" in data and data["onboarding_answers"] is not None:
-        data["onboarding_answers"] = payload.onboarding_answers.model_dump(exclude_none=True)
-
-    if profile is None:
-        profile = UserProfile(user_id=current_user.id, **data)
-        db.add(profile)
-        logger.info("UserProfile created for user_id=%d", current_user.id)
+    existing = await _get_profile(current_user["_id"])
+    if existing is None:
+        doc = {
+            "_id": await mongo.next_id("user_profiles"),
+            "user_id": current_user["_id"],
+            "profile_complete": False,
+            "created_at": now,
+            "updated_at": now,
+            **data,
+        }
+        doc["profile_complete"] = _compute_profile_complete(doc)
+        await db[mongo.PROFILES].insert_one(doc)
+        logger.info("UserProfile created for user_id=%s", current_user["_id"])
     else:
-        for field, value in data.items():
-            setattr(profile, field, value)
-        profile.updated_at = datetime.now(timezone.utc)
-        logger.info("UserProfile updated for user_id=%d fields=%s", current_user.id, list(data.keys()))
+        merged = {**existing, **data}
+        merged["profile_complete"] = _compute_profile_complete(merged)
+        merged["updated_at"] = now
+        await db[mongo.PROFILES].update_one(
+            {"_id": existing["_id"]},
+            {"$set": {**data, "profile_complete": merged["profile_complete"], "updated_at": now}},
+        )
+        doc = merged
+        logger.info("UserProfile updated for user_id=%s fields=%s",
+                    current_user["_id"], list(data.keys()))
 
-    # Compute completeness after applying updates
-    profile.profile_complete = _compute_profile_complete(profile)
+    # ── Sync key fields back to the user doc for suggest defaults ─────────────
+    user_sync: dict = {}
+    if doc.get("preferred_mood"):
+        user_sync["preferred_mood"] = doc["preferred_mood"]
+    if doc.get("preferred_budget"):
+        user_sync["preferred_budget"] = doc["preferred_budget"]
+    if doc.get("relationship_stage_pref"):
+        user_sync["preferred_stage"] = doc["relationship_stage_pref"]
+    if doc.get("dietary_requirements"):
+        user_sync["dietary_requirements"] = doc["dietary_requirements"]
+    if user_sync:
+        user_sync["updated_at"] = now
+        await db[mongo.USERS].update_one({"_id": current_user["_id"]}, {"$set": user_sync})
 
-    # ── Sync key fields back to User for /venues/suggest compat ──────────────
-    if profile.preferred_mood:
-        current_user.preferred_mood = profile.preferred_mood
-    if profile.preferred_budget:
-        current_user.preferred_budget = profile.preferred_budget
-    if profile.relationship_stage_pref:
-        current_user.preferred_stage = profile.relationship_stage_pref.value
-    if profile.dietary_requirements:
-        current_user.dietary_requirements = profile.dietary_requirements
-    current_user.updated_at = datetime.now(timezone.utc)
+    return _profile_read(doc)
 
-    await db.commit()
-    await db.refresh(profile)
-    return profile
+
+# ── POST /profile/onboarding ──────────────────────────────────────────────────
+
+@router.post("/onboarding", status_code=status.HTTP_200_OK)
+async def submit_onboarding(
+    payload: Dict[str, Any] = Body(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Persist the full onboarding answer set as-is. The app collects far more than the
+    structured ProfileSetupRequest, so the entire payload is stored under
+    `onboarding_raw`; a few safe fields are mapped to typed columns / the user doc.
+    """
+    db = mongo.get_db()
+    now = datetime.now(timezone.utc)
+
+    existing = await _get_profile(current_user["_id"])
+    update: dict = {"onboarding_raw": payload, "updated_at": now, "profile_complete": True}
+
+    # Map a few safe, free-text fields (no enum validation) so they show on the profile.
+    loc = payload.get("location") if isinstance(payload.get("location"), dict) else {}
+    if loc.get("city"):
+        update["city"] = loc["city"]
+    if payload.get("date_of_birth"):
+        update["date_of_birth"] = payload["date_of_birth"]
+
+    # Geocode the user's location to real coordinates (postcode preferred) so distance-based
+    # matching and venue travel-times work. Cached + graceful (no-op without a Mapbox token).
+    place = loc.get("postcode") or loc.get("city")
+    if place:
+        geo = await geocoding.geocode(place)
+        if geo:
+            update["lat"], update["lng"], update["geo_name"] = geo
+
+    if existing is None:
+        doc = {
+            "_id": await mongo.next_id("user_profiles"),
+            "user_id": current_user["_id"],
+            "created_at": now,
+            **update,
+        }
+        await db[mongo.PROFILES].insert_one(doc)
+    else:
+        # Drop the cached intent vector so matching recomputes from the new answers.
+        await db[mongo.PROFILES].update_one(
+            {"_id": existing["_id"]},
+            {"$set": update, "$unset": {"intent_vector": "", "intent_updated_at": ""}},
+        )
+
+    # Sync display name to the user record.
+    if payload.get("first_name"):
+        await db[mongo.USERS].update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"full_name": payload["first_name"], "updated_at": now}},
+        )
+
+    logger.info("Onboarding stored for user_id=%s (%d keys)", current_user["_id"], len(payload))
+    return {"stored": True, "fields": len(payload)}
 
 
 # ── POST /profile/availability ────────────────────────────────────────────────
 
-@router.post(
-    "/availability",
-    response_model=List[AvailabilitySlotRead],
-    status_code=status.HTTP_200_OK,
-)
+@router.post("/availability", response_model=List[AvailabilitySlotRead])
 async def set_availability(
     payload: AvailabilitySetRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Full-replace the user's weekly availability.
-    Deletes all existing slots, then inserts the provided set.
-    Supply up to 21 windows (e.g. 3 per day across 7 days).
-    """
-    # Validate no duplicate (weekday, start_time) pairs within the payload
+    """Full-replace the user's weekly availability."""
     seen: set[tuple] = set()
     for slot in payload.slots:
         key = (slot.weekday, slot.start_time)
@@ -176,250 +215,80 @@ async def set_availability(
             )
         seen.add(key)
 
-    # Delete existing slots
-    await db.execute(
-        delete(UserAvailability).where(UserAvailability.user_id == current_user.id)
-    )
+    db = mongo.get_db()
+    await db[mongo.AVAILABILITY].delete_many({"user_id": current_user["_id"]})
 
-    # Insert new slots
-    new_slots: list[UserAvailability] = []
+    now = datetime.now(timezone.utc)
+    docs = []
     for s in payload.slots:
-        slot = UserAvailability(
-            user_id=current_user.id,
-            weekday=s.weekday,
-            start_time=s.start_time,
-            end_time=s.end_time,
-        )
-        db.add(slot)
-        new_slots.append(slot)
+        docs.append({
+            "_id": await mongo.next_id("user_availability"),
+            "user_id": current_user["_id"],
+            "weekday": s.weekday,
+            "start_time": s.start_time.isoformat(),
+            "end_time": s.end_time.isoformat(),
+            "created_at": now,
+            "updated_at": now,
+        })
+    if docs:
+        await db[mongo.AVAILABILITY].insert_many(docs)
 
-    await db.commit()
-
-    # Refresh all to get DB-assigned IDs
-    for slot in new_slots:
-        await db.refresh(slot)
-
-    logger.info(
-        "Availability set for user_id=%d: %d slots",
-        current_user.id, len(new_slots),
-    )
-    return new_slots
+    logger.info("Availability set for user_id=%s: %d slots", current_user["_id"], len(docs))
+    return [_availability_read(d) for d in docs]
 
 
 # ── GET /profile/availability ─────────────────────────────────────────────────
 
 @router.get("/availability", response_model=List[AvailabilitySlotRead])
-async def get_availability(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Return the current user's weekly availability slots."""
-    slots = await _get_availability(db, current_user.id)
-    return slots
-# ── GET /profile/social ───────────────────────────────────────────────────────
-
-@router.get("/social/connections", response_model=List[SocialConnectionRead])
-async def get_social_connections(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """List all connected social platforms for the current user."""
-    result = await db.execute(
-        select(UserSocialConnection).where(
-            UserSocialConnection.user_id == current_user.id,
-            UserSocialConnection.is_active == True,  # noqa: E712
-        )
-    )
-    return result.scalars().all()
+async def get_availability(current_user: dict = Depends(get_current_user)):
+    slots = await _get_availability(current_user["_id"])
+    return [_availability_read(s) for s in slots]
 
 
-@router.get("/social/signals", response_model=List[SocialSignalRead])
-async def get_social_signals(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """List all extracted social signals for the current user."""
-    result = await db.execute(
-        select(UserSocialSignal)
-        .where(UserSocialSignal.user_id == current_user.id)
-        .order_by(UserSocialSignal.platform, UserSocialSignal.signal_type)
-    )
-    return result.scalars().all()
+# ── Account self-service (pause / resume / delete) ────────────────────────────
 
+@router.post("/pause")
+async def pause_account(current_user: dict = Depends(get_current_user)):
+    """Hide the profile from discovery without deleting it. Reversible via /resume.
 
-# ── POST /profile/connect/instagram ──────────────────────────────────────────
-
-@router.post("/connect/instagram", status_code=status.HTTP_200_OK)
-async def connect_instagram(
-    payload: SocialConnectRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
+    Uses a dedicated `paused` flag (NOT is_active) so the user can still sign in and
+    un-pause — is_active is reserved for account deletion / bans.
     """
-    Save Instagram OAuth tokens and immediately run the analysis pipeline.
-
-    In production: your frontend handles the Instagram OAuth redirect,
-    receives the access_token, and posts it here.
-
-    Instagram Basic Display API OAuth flow:
-    1. Redirect user to:
-       https://api.instagram.com/oauth/authorize
-         ?client_id={INSTAGRAM_APP_ID}
-         &redirect_uri={REDIRECT_URI}
-         &scope=user_profile,user_media
-         &response_type=code
-    2. Instagram redirects back with ?code=...
-    3. Exchange code for access_token via POST to:
-       https://api.instagram.com/oauth/access_token
-    4. POST that access_token to this endpoint.
-    """
-    # Upsert the connection record
-    result = await db.execute(
-        select(UserSocialConnection).where(
-            UserSocialConnection.user_id == current_user.id,
-            UserSocialConnection.platform == SocialPlatform.instagram,
-        )
+    await mongo.get_db()[mongo.USERS].update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {"paused": True, "updated_at": datetime.now(timezone.utc)}},
     )
-    conn = result.scalar_one_or_none()
-    if conn:
-        conn.access_token        = payload.access_token
-        conn.platform_user_id    = payload.platform_user_id
-        conn.platform_username   = payload.platform_username
-        conn.is_active           = True
-        conn.connected_at        = datetime.now(timezone.utc)
-    else:
-        conn = UserSocialConnection(
-            user_id=current_user.id,
-            platform=SocialPlatform.instagram,
-            access_token=payload.access_token,
-            platform_user_id=payload.platform_user_id,
-            platform_username=payload.platform_username,
-        )
-        db.add(conn)
-    await db.commit()
+    return {"paused": True}
 
-    # Run pipeline immediately (in prod, offload to background task / Celery)
-    result = await run_instagram_pipeline(
-        user_id=current_user.id,
-        access_token=payload.access_token,
-        db=db,
+
+@router.post("/resume")
+async def resume_account(current_user: dict = Depends(get_current_user)):
+    await mongo.get_db()[mongo.USERS].update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {"paused": False, "updated_at": datetime.now(timezone.utc)}},
     )
-    logger.info(
-        "Instagram connected for user_id=%d: %d signals",
-        current_user.id, result["signals_saved"],
-    )
-    return {
-        "platform": "instagram",
-        "connected": True,
-        "signals_extracted": result["signals_saved"],
-    }
+    return {"paused": False}
 
 
-# ── POST /profile/connect/spotify ────────────────────────────────────────────
+@router.delete("/me", status_code=200)
+async def delete_my_account(current_user: dict = Depends(get_current_user)):
+    """Permanently delete the account and everything attached to it."""
+    db = mongo.get_db()
+    me = current_user["_id"]
 
-@router.post("/connect/spotify", status_code=status.HTTP_200_OK)
-async def connect_spotify(
-    payload: SocialConnectRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Save Spotify OAuth tokens and immediately run the analysis pipeline.
+    profile = await db[mongo.PROFILES].find_one({"user_id": me})
+    for pid in (profile or {}).get("photos") or []:
+        try:
+            from bson import ObjectId
+            await mongo.gridfs().delete(ObjectId(pid))
+        except Exception:
+            pass
 
-    Spotify OAuth flow:
-    1. Redirect user to:
-       https://accounts.spotify.com/authorize
-         ?client_id={SPOTIFY_CLIENT_ID}
-         &redirect_uri={REDIRECT_URI}
-         &scope=user-top-read user-read-recently-played
-         &response_type=code
-    2. Spotify redirects back with ?code=...
-    3. Exchange code for access_token + refresh_token via POST to:
-       https://accounts.spotify.com/api/token
-    4. POST access_token here.
-    """
-    result = await db.execute(
-        select(UserSocialConnection).where(
-            UserSocialConnection.user_id == current_user.id,
-            UserSocialConnection.platform == SocialPlatform.spotify,
-        )
-    )
-    conn = result.scalar_one_or_none()
-    if conn:
-        conn.access_token       = payload.access_token
-        conn.refresh_token      = payload.refresh_token
-        conn.platform_user_id   = payload.platform_user_id
-        conn.platform_username  = payload.platform_username
-        conn.is_active          = True
-        conn.connected_at       = datetime.now(timezone.utc)
-    else:
-        conn = UserSocialConnection(
-            user_id=current_user.id,
-            platform=SocialPlatform.spotify,
-            access_token=payload.access_token,
-            refresh_token=payload.refresh_token,
-            platform_user_id=payload.platform_user_id,
-            platform_username=payload.platform_username,
-        )
-        db.add(conn)
-    await db.commit()
-
-    result = await run_spotify_pipeline(
-        user_id=current_user.id,
-        access_token=payload.access_token,
-        db=db,
-    )
-    logger.info(
-        "Spotify connected for user_id=%d: %d signals",
-        current_user.id, result["signals_saved"],
-    )
-    return {
-        "platform": "spotify",
-        "connected": True,
-        "signals_extracted": result["signals_saved"],
-    }
-
-
-# ── POST /profile/social/resync ───────────────────────────────────────────────
-
-@router.post("/social/resync/{platform}", status_code=status.HTTP_200_OK)
-async def resync_social(
-    platform: SocialPlatform,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Re-run the analysis pipeline for an already-connected platform."""
-    result = await db.execute(
-        select(UserSocialConnection).where(
-            UserSocialConnection.user_id == current_user.id,
-            UserSocialConnection.platform == platform,
-            UserSocialConnection.is_active == True,  # noqa: E712
-        )
-    )
-    conn = result.scalar_one_or_none()
-    if not conn:
-        raise HTTPException(
-            status_code=404,
-            detail=f"{platform.value} is not connected. Call /connect/{platform.value} first.",
-        )
-    if not conn.access_token:
-        raise HTTPException(status_code=400, detail="No access token stored for this platform.")
-
-    if platform == SocialPlatform.instagram:
-        run_result = await run_instagram_pipeline(
-            user_id=current_user.id,
-            access_token=conn.access_token,
-            db=db,
-        )
-    else:
-        run_result = await run_spotify_pipeline(
-            user_id=current_user.id,
-            access_token=conn.access_token,
-            db=db,
-        )
-
-    return {
-        "platform": platform.value,
-        "resynced": True,
-        "signals_extracted": run_result["signals_saved"],
-    }
+    await db[mongo.PROFILES].delete_many({"user_id": me})
+    await db[mongo.AVAILABILITY].delete_many({"user_id": me})
+    await db[mongo.LIKES].delete_many({"$or": [{"from_user_id": me}, {"to_user_id": me}]})
+    await db[mongo.CONNECTIONS].delete_many({"$or": [{"user_a_id": me}, {"user_b_id": me}]})
+    await db["tonight_optins"].delete_many({"user_id": me})
+    await db[mongo.USERS].delete_one({"_id": me})
+    logger.info("Account deleted for user_id=%s", me)
+    return {"deleted": True}

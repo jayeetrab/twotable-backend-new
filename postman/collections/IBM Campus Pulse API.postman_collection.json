@@ -1,0 +1,588 @@
+{
+  "info": {
+    "_postman_id": "c967eb74-06a1-4a92-b8f3-d69c1fcdb014",
+    "name": "IBM Campus Pulse API",
+    "description": "Complete API collection for IBM Campus Pulse — Geo-Intelligent Dashboard for UK & Ireland University Engagement.\n\nBase URL: [http://localhost:8000](http://localhost:8000)\n\nSet the `base_url` environment variable to `http://localhost:8000` before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🗺 Map",
+      "item": [
+        {
+          "name": "Get Map Data — All",
+          "id": "4ad6107f-2927-4909-b0a2-b241ab6f50f8",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "map",
+                ""
+              ]
+            },
+            "description": "Returns all geo-aggregated engagement points for the map. No filters applied."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Map Data — Technical Only",
+          "id": "fb47d32a-a860-4669-a6b3-c02bb6f9c771",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map/?category=technical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "map",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical",
+                  "description": "Filter by engagement type: technical | non_technical | unknown"
+                }
+              ]
+            },
+            "description": "Returns only technical engagement geo points (AI, cloud, quantum, hackathon etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Map Data — By Region",
+          "id": "b530cd39-f460-4d94-9e3e-0308dbaa5a76",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map/?region=Scotland",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "map",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "region",
+                  "value": "Scotland",
+                  "description": "Region filter: London | Scotland | North West | South West | Yorkshire | Wales | Ireland | Northern Ireland etc."
+                }
+              ]
+            },
+            "description": "Returns geo points filtered by UK/Ireland region."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Map Data — Date Range Filter",
+          "id": "3c053340-473a-40c4-ac3e-2fc5f8f6c1db",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map/?date_from=2026-01-01&date_to=2026-03-08",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "map",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01",
+                  "description": "Start date (YYYY-MM-DD)"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-03-08",
+                  "description": "End date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Filter map data by date range."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Map Data — Combined Filters",
+          "id": "537433df-9fa3-4a28-a3ff-1f7575313173",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/map/?category=technical&region=London&date_from=2026-01-01&date_to=2026-03-08",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "map",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical"
+                },
+                {
+                  "key": "region",
+                  "value": "London"
+                },
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-03-08"
+                }
+              ]
+            },
+            "description": "Full filter combination — category + region + date range."
+          },
+          "response": []
+        }
+      ],
+      "id": "41f20f72-db40-4a2f-ab56-0c176c122da9"
+    },
+    {
+      "name": "📈 Timeline",
+      "item": [
+        {
+          "name": "Get Timeline — All",
+          "id": "28480a7e-f639-40e1-93cc-7443e2fcdc57",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/timeline/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "timeline",
+                ""
+              ]
+            },
+            "description": "Returns all engagement data grouped by date and category for the timeline chart."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Timeline — Technical Only",
+          "id": "79da1a73-d9a6-4e50-9fc5-9191795b12cd",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/timeline/?category=technical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "timeline",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical"
+                }
+              ]
+            },
+            "description": "Timeline filtered to technical engagements only."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Timeline — Date Range",
+          "id": "e1f0f00d-1699-4869-b9fe-bde0d7fec78e",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/timeline/?date_from=2026-01-01&date_to=2026-03-08",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "timeline",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "date_from",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "date_to",
+                  "value": "2026-03-08"
+                }
+              ]
+            },
+            "description": "Timeline filtered by date range."
+          },
+          "response": []
+        }
+      ],
+      "id": "6698c5c4-bb63-44ee-b778-035a288cbe6d"
+    },
+    {
+      "name": "📊 Analytics",
+      "item": [
+        {
+          "name": "Top Universities — All",
+          "id": "3c23e673-4127-4698-a58b-3d73df78a7a6",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/top-universities?limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "top-universities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Number of results (max 50)"
+                }
+              ]
+            },
+            "description": "Returns top universities ranked by number of IBM engagement posts."
+          },
+          "response": []
+        },
+        {
+          "name": "Top Universities — Technical, London",
+          "id": "b07e58f1-51e8-4aa6-819d-ce5b25eccd8a",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/top-universities?category=technical&region=London&limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "top-universities"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical"
+                },
+                {
+                  "key": "region",
+                  "value": "London"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Top 5 London universities with technical IBM engagements."
+          },
+          "response": []
+        },
+        {
+          "name": "Keyword Frequency — Technical",
+          "id": "d8531906-27dd-4c59-b7a0-d98606950a69",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/keywords?category=technical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "keywords"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical",
+                  "description": "technical | non_technical"
+                }
+              ]
+            },
+            "description": "Returns top 20 most frequent technical keywords extracted from posts."
+          },
+          "response": []
+        },
+        {
+          "name": "Keyword Frequency — Non-Technical",
+          "id": "ad0655ed-408a-4a09-b890-9c822e5e9532",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/keywords?category=non_technical",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "keywords"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "non_technical"
+                }
+              ]
+            },
+            "description": "Returns top non-technical keywords (career fairs, networking, outreach etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Sentiment Summary",
+          "id": "4f60f587-e33e-4631-9ce3-e6dd17ddd764",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/sentiment-summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "analytics",
+                "sentiment-summary"
+              ]
+            },
+            "description": "Returns count of positive / neutral / negative posts across all ingested data."
+          },
+          "response": []
+        }
+      ],
+      "id": "6b1be778-0971-488d-abbf-4d8d356af6a4"
+    },
+    {
+      "name": "📋 Posts",
+      "item": [
+        {
+          "name": "List All Posts",
+          "id": "3b361aa7-4f14-4d94-b3ec-6769223229d2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/?limit=50",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Max results (up to 200)"
+                }
+              ]
+            },
+            "description": "Returns a paginated list of all ingested posts with NLP results."
+          },
+          "response": []
+        },
+        {
+          "name": "List Posts — Technical Only",
+          "id": "f06ea8c7-5c39-4593-84bc-08fef135e71c",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/?category=technical&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "technical"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns only technical posts — useful for developer-focused engagement analysis."
+          },
+          "response": []
+        },
+        {
+          "name": "List Posts — Non-Technical",
+          "id": "e2b87250-bf02-4823-abf5-ecbadccf2c69",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/posts/?category=non_technical&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "non_technical"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Returns only non-technical posts — career fairs, outreach events etc."
+          },
+          "response": []
+        }
+      ],
+      "id": "dee43f5d-e3bf-42b7-82d6-f9b027d00a36"
+    },
+    {
+      "name": "⚡ Ingestion",
+      "item": [
+        {
+          "name": "Trigger Manual Ingest",
+          "id": "d384e5ec-5bc7-406b-b2c2-a4a22bdab090",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ingest/trigger",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ingest",
+                "trigger"
+              ]
+            },
+            "description": "Manually triggers Reddit + Twitter ingestion. Runs as a background task. Requires valid API credentials in .env to fetch real data."
+          },
+          "response": []
+        }
+      ],
+      "id": "0842dc8b-4757-4eb8-bc43-eaf72e0e4adf"
+    },
+    {
+      "name": "📁 Export",
+      "item": [
+        {
+          "name": "Export — CSV",
+          "id": "4d0fe9e5-7b73-4fff-9446-b46d5fb90d31",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/export/csv",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "export",
+                "csv"
+              ]
+            },
+            "description": "Downloads all engagement data as a CSV file. In Postman: click arrow next to Send → 'Send and Download'."
+          },
+          "response": []
+        },
+        {
+          "name": "Export — Excel (XLSX)",
+          "id": "cc62ffe9-2d95-42a5-8aa2-ae5773be014a",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/export/xlsx",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "export",
+                "xlsx"
+              ]
+            },
+            "description": "Downloads full Excel report with raw data sheet + summary pivot by university and category. In Postman: click arrow next to Send → 'Send and Download'."
+          },
+          "response": []
+        }
+      ],
+      "id": "78d72b4b-fd7a-4d5f-aeea-908c8f703db5"
+    }
+  ],
+  "variable": [
+    {
+      "id": "d9b4e49a-21cf-4ace-ad3b-fdd448f5d9fb",
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

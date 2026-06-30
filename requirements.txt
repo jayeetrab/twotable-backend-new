@@ -7,10 +7,9 @@ pydantic==2.10.6
 pydantic-settings==2.7.1
 email-validator==2.2.0
 
-# Database
-sqlalchemy[asyncio]==2.0.38
-asyncpg==0.30.0
-alembic==1.14.1
+# Database — MongoDB (async)
+motor==3.7.1
+pymongo==4.16.0
 
 # Auth
 python-jose[cryptography]==3.3.0
@@ -20,17 +19,21 @@ python-multipart==0.0.20
 # HTTP client
 httpx==0.28.1
 
-# Embeddings — local (no API key needed)
+# Embeddings — local (no API key needed), used for in-app cosine matching
 sentence-transformers==3.4.1
 numpy==2.2.2
 
-# Vector DB support
-pgvector==0.3.6
+# Payments (optional — booking deposit). Safe to omit in dev.
+stripe==11.4.0
 
-# Gemini — only used for venue text enrichment, not embeddings
+# Gemini — optional venue text enrichment during seeding only
 google-genai==1.7.0
+
+# Admin image-uploader web app (admin/image_uploader.py)
+# Pinned to 1.39 (Tornado-based) for compatibility with FastAPI's starlette pin.
+streamlit==1.39.0
 
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.3
-aiosqlite==0.21.0
+redis==7.2.0

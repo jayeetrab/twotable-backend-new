@@ -26,9 +26,10 @@ class RefreshRequest(BaseModel):
 
 class UserRead(BaseModel):
     id: int
-    email: EmailStr
+    email: EmailStr | None = None
+    phone: str | None = None
     role: UserRole
-    full_name: str | None
+    full_name: str | None = None
     is_active: bool
 
     model_config = {"from_attributes": True}

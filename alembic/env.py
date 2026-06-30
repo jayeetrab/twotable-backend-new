@@ -24,6 +24,8 @@ import app.models.venue_embedding   # noqa: F401
 import app.models.intent_embedding  # noqa: F401
 import app.models.user_social_connection  # noqa: F401
 import app.models.user_social_signal      # noqa: F401
+import app.models.user_embedding  # noqa: F401
+
 
 
 from app.core.config import settings
