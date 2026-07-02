@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from app.api.v1.discovery import _card
 from app.core.deps import get_current_user
 from app.db import mongo
-from app.services import events, meeting
+from app.services import events, meeting, routing
 from app.services.geo import haversine_km
 
 logger = logging.getLogger(__name__)
@@ -38,13 +38,13 @@ PLANS = "date_plans"
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def _is_peak(slot: str) -> bool:
-    """Peak = Friday/Saturday evening (>= 19:00). Accepts ISO or a loose label."""
+    """Peak = Friday/Saturday dinner slots (>= 18:00). Accepts ISO or a loose label."""
     try:
         dt = datetime.fromisoformat(slot)
-        return dt.weekday() in (4, 5) and dt.hour >= 19
+        return dt.weekday() in (4, 5) and dt.hour >= 18
     except Exception:
         s = (slot or "").lower()
-        has_eve = any(h in s for h in ["19", "20", "21", "22", "23"])
+        has_eve = any(h in s for h in ["18", "19", "20", "21", "22", "23"])
         return ("fri" in s or "sat" in s) and has_eve
 
 
@@ -56,11 +56,12 @@ def _side(plan: dict, me: int) -> str:
     return "a" if plan["user_a_id"] == me else "b"
 
 
-def _venue_card(v: dict) -> dict:
+def _venue_card(v: dict, eta_min: Optional[float] = None) -> dict:
     photos = [mongo.photo_url(p) for p in (v.get("photos") or [])]
     return {"id": v["_id"], "name": v.get("name"), "cuisine": v.get("cuisine"),
             "price_band": v.get("price_band"), "lat": v.get("lat"), "lng": v.get("lng"),
-            "photo_url": photos[0] if photos else None}
+            "photo_url": photos[0] if photos else None,
+            "eta_min": eta_min}   # this viewer's estimated drive time, when known
 
 
 async def _state(plan: dict, me: int) -> dict:
@@ -82,6 +83,19 @@ async def _state(plan: dict, me: int) -> dict:
     if plan.get("agreed_venue_id") and not agreed_venue:
         agreed_venue = await db[mongo.VENUES].find_one({"_id": plan["agreed_venue_id"]})
 
+    # This viewer's drive time to each option ("we play on time"): cache-first, so it's a
+    # Mapbox matrix call at most once per hour bucket, and instant on the estimate fallback.
+    my_prof = await db[mongo.PROFILES].find_one({"user_id": me}) or {}
+    etas: dict[int, float] = {}
+    if my_prof.get("lat") is not None and my_prof.get("lng") is not None:
+        coords = [(i, (opt_docs[i]["lat"], opt_docs[i]["lng"]))
+                  for i in opt_ids
+                  if i in opt_docs and opt_docs[i].get("lat") is not None]
+        if coords:
+            mins = await routing.travel_matrix(
+                (my_prof["lat"], my_prof["lng"]), [c for _, c in coords], "drive")
+            etas = {i: round(m, 0) for (i, _), m in zip(coords, mins) if m is not None}
+
     return {
         "id": plan["_id"],
         "status": plan["status"],
@@ -92,7 +106,7 @@ async def _state(plan: dict, me: int) -> dict:
         "agreed_slot": plan.get("agreed_slot"),
         "is_peak": plan.get("is_peak"),
         "price": _price(plan.get("is_peak")),
-        "venue_options": [_venue_card(opt_docs[i]) for i in opt_ids if i in opt_docs],
+        "venue_options": [_venue_card(opt_docs[i], etas.get(i)) for i in opt_ids if i in opt_docs],
         "my_picks": my_picks,
         "their_picks": their_picks,
         "agreed_venue": _venue_card(agreed_venue) if agreed_venue else None,
@@ -122,13 +136,17 @@ async def _generate_venue_options(plan: dict) -> list[int]:
 
     if a and b:
         mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
-        venues.sort(key=lambda v: haversine_km(mid[0], mid[1], v["lat"], v["lng"]))
+        # Nearest to the pair's midpoint, preferring venues with photos so the
+        # shortlist the app renders always looks good.
+        venues.sort(key=lambda v: (0 if v.get("photos") else 1,
+                                   haversine_km(mid[0], mid[1], v["lat"], v["lng"])))
         depart = None
         try:
             depart = datetime.fromisoformat(plan["agreed_slot"])
         except Exception:
             pass
-        ranked = await meeting.fair_meeting_venues(a, "drive", b, "drive", venues[:24], depart, 60, 5)
+        # Product rule: the meeting point must be at most 45 minutes' commute for BOTH.
+        ranked = await meeting.fair_meeting_venues(a, "drive", b, "drive", venues[:24], depart, 45, 5)
         ids = [r["venue_id"] for r in ranked]
         if ids:
             return ids

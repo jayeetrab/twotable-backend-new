@@ -133,6 +133,37 @@ async def fair_venues(req: FairVenuesRequest, _: dict = Depends(get_current_user
     return {"count": len(ranked), "venues": ranked}
 
 
+@router.get("/travel-options/{venue_id}")
+async def travel_options(
+    venue_id: int,
+    depart_at: Optional[datetime] = Query(None),
+    current_user: dict = Depends(get_current_user),
+):
+    """How long it takes ME to reach this venue, per way of getting there.
+
+    Returns walk / cycle / drive minutes from the signed-in user's saved location
+    (traffic-aware when a Mapbox token is set; calibrated estimate otherwise).
+    """
+    db = mongo.get_db()
+    venue = await db[mongo.VENUES].find_one({"_id": venue_id})
+    if not venue or venue.get("lat") is None or venue.get("lng") is None:
+        raise HTTPException(404, "Venue not found or has no coordinates")
+
+    prof = await db[mongo.PROFILES].find_one({"user_id": current_user["_id"]}) or {}
+    if prof.get("lat") is None or prof.get("lng") is None:
+        raise HTTPException(422, "Set your location in your profile to see travel times.")
+
+    origin = (prof["lat"], prof["lng"])
+    dest = (venue["lat"], venue["lng"])
+    modes = []
+    for mode in ["walk", "cycle", "drive"]:
+        minutes = await routing.travel_minutes(origin, dest, mode, depart_at)
+        modes.append({"mode": mode, "minutes": round(minutes, 0)})
+    from app.core.config import settings as _s
+    return {"venue_id": venue_id, "venue_name": venue.get("name"),
+            "modes": modes, "source": "mapbox" if _s.MAPBOX_TOKEN else "estimate"}
+
+
 @router.get("/fair-venues/match/{user_id}")
 async def fair_venues_for_match(
     user_id: int,

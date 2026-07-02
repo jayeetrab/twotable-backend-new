@@ -30,7 +30,10 @@ from typing import Optional
 import numpy as np
 
 from app.services import dating_match, embeddings
-from app.services.geo import haversine_km
+from app.services.geo import estimate_travel_minutes, haversine_km
+
+# Product rule: a date venue must be reachable within 45 minutes for BOTH people.
+MAX_COMMUTE_MIN = 45.0
 
 
 # ── Pair → ideal shared venue ─────────────────────────────────────────────────
@@ -80,11 +83,14 @@ def best_venue_for_pair(me: dict, cand: dict, pair_vec: list[float],
         if not emb:
             continue
         fit = (embeddings.cosine(pair_vec, emb) + 1.0) / 2.0   # 0..1 taste fit
-        # Reachability: penalise venues far from either person (when we know coords).
+        # Reachability: hard 45-minute commute cap for BOTH, then a soft decay so the
+        # fairest-to-reach venues among the eligible ones win.
         if a and b and v.get("lat") is not None and v.get("lng") is not None:
-            da = haversine_km(a[0], a[1], v["lat"], v["lng"])
-            db = haversine_km(b[0], b[1], v["lat"], v["lng"])
-            reach = math.exp(-max(da, db) / 12.0)              # both must be close-ish
+            ta = estimate_travel_minutes(a[0], a[1], v["lat"], v["lng"], "drive")
+            tb = estimate_travel_minutes(b[0], b[1], v["lat"], v["lng"], "drive")
+            if ta > MAX_COMMUTE_MIN or tb > MAX_COMMUTE_MIN:
+                continue                                        # not meetable: skip entirely
+            reach = math.exp(-max(ta, tb) / 25.0)
             fit = 0.75 * fit + 0.25 * reach
         if fit > best_score:
             best, best_score = v, fit

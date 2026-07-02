@@ -31,28 +31,49 @@ def _get_model():
     return _model
 
 
+def _disabled() -> bool:
+    """EMBEDDING_PROVIDER=off skips the model entirely (e.g. low-RAM deploys).
+
+    Matching degrades gracefully: semantic similarity goes neutral while every other
+    signal (reciprocity, lifestyle, distance, recency) keeps ranking the feed.
+    """
+    return settings.EMBEDDING_PROVIDER.lower() in ("off", "none", "disabled")
+
+
 async def embed(text: str) -> List[float]:
+    if _disabled():
+        return [0.0] * settings.EMBEDDING_DIM
     text = (text or "").replace("\n", " ").strip()
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        lambda: _get_model().encode(
-            text, normalize_embeddings=True, show_progress_bar=False
-        ).tolist(),
-    )
+    try:
+        return await loop.run_in_executor(
+            None,
+            lambda: _get_model().encode(
+                text, normalize_embeddings=True, show_progress_bar=False
+            ).tolist(),
+        )
+    except Exception as exc:  # never let a model failure take the API down
+        logger.error("embed failed (%s); returning neutral vector", exc)
+        return [0.0] * settings.EMBEDDING_DIM
 
 
 async def embed_batch(texts: Sequence[str]) -> List[List[float]]:
     if not texts:
         return []
+    if _disabled():
+        return [[0.0] * settings.EMBEDDING_DIM for _ in texts]
     cleaned = [(t or "").replace("\n", " ").strip() for t in texts]
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        lambda: _get_model().encode(
-            cleaned, normalize_embeddings=True, batch_size=64, show_progress_bar=False
-        ).tolist(),
-    )
+    try:
+        return await loop.run_in_executor(
+            None,
+            lambda: _get_model().encode(
+                cleaned, normalize_embeddings=True, batch_size=64, show_progress_bar=False
+            ).tolist(),
+        )
+    except Exception as exc:
+        logger.error("embed_batch failed (%s); returning neutral vectors", exc)
+        return [[0.0] * settings.EMBEDDING_DIM for _ in texts]
 
 
 def cosine(a: Sequence[float], b: Sequence[float]) -> float:

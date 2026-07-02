@@ -21,6 +21,14 @@ from app.api.v1.dates import router as dates_router
 async def lifespan(app: FastAPI):
     mongo.connect()
     await mongo.ensure_indexes()
+    
+    from app.core.config import settings
+    if settings.APP_ENV == "development":
+        db = mongo.get_db()
+        print("Development mode: checking dummy profiles...")
+        from app.scripts.seed_daters import seed_daters
+        await seed_daters(db)
+            
     yield
     mongo.close()
 

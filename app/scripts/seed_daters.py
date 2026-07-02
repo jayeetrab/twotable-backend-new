@@ -23,14 +23,13 @@ DATERS = [
 ]
 
 
-async def run() -> None:
-    mongo.connect()
-    db = mongo.get_db()
+async def seed_daters(db) -> None:
     now = datetime.now(timezone.utc)
     created = 0
     for phone, name, dob, job, city, interests in DATERS:
         if await db[mongo.USERS].find_one({"phone": phone}):
-            print(f"  ⏭  {name} exists"); continue
+            print(f"  ⏭  {name} exists")
+            continue
         uid = await mongo.next_id("users")
         await db[mongo.USERS].insert_one({
             "_id": uid, "email": None, "phone": phone, "hashed_password": None,
@@ -51,7 +50,14 @@ async def run() -> None:
         created += 1
         print(f"  ✅ {name} ({job})")
     print(f"\nDone. Created {created} daters.")
-    mongo.close()
+
+async def run() -> None:
+    mongo.connect()
+    db = mongo.get_db()
+    try:
+        await seed_daters(db)
+    finally:
+        mongo.close()
 
 
 if __name__ == "__main__":

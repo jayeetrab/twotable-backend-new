@@ -130,6 +130,9 @@ def main():
         "mode_a": "drive", "mode_b": "walk", "city": "Bristol", "limit": 3}))
     check("GET  geo/fair-venues/match/{id}", c.get(
         f"{BASE}/geo/fair-venues/match/1", headers=H), ok=(200, 422))  # 422 if coords missing
+    if venues:
+        check("GET  geo/travel-options/{venue_id}", c.get(
+            f"{BASE}/geo/travel-options/{venues[0]['id']}", headers=H), ok=(200, 404, 422))
 
     if DESTRUCTIVE:
         print("DESTRUCTIVE (throwaway account)")
