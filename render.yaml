@@ -23,7 +23,7 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true       # Render generates a strong secret
       - key: PUBLIC_BASE_URL      # must match the service URL (photo links are built from it)
-        value: "https://twotable-backend.onrender.com"
+        value: "https://twotable-backend-new.onrender.com"
       - key: APP_ENV
         value: "production"
       - key: EMBEDDING_PROVIDER   # "off" fits the free tier; "local" on >=2GB instances
