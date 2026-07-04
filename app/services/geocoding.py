@@ -27,8 +27,21 @@ logger = logging.getLogger(__name__)
 
 CACHE = "geocoding_cache"
 _MAPBOX_URL = "https://api.mapbox.com/search/geocode/v6/forward"
+_POSTCODES_IO = "https://api.postcodes.io"
 
 LatLngName = Tuple[float, float, str]
+
+# City-centre fallback for launch cities, used when a user gives only a city name (no
+# postcode) and there's no Mapbox token. Keeps distance-matching + travel times working.
+_UK_CITY_CENTRES: dict[str, LatLngName] = {
+    "bristol": (51.4545, -2.5879, "Bristol, England"),
+    "bath": (51.3811, -2.3590, "Bath, England"),
+    "london": (51.5074, -0.1278, "London, England"),
+    "manchester": (53.4808, -2.2426, "Manchester, England"),
+    "birmingham": (52.4862, -1.8904, "Birmingham, England"),
+    "leeds": (53.8008, -1.5491, "Leeds, England"),
+    "cardiff": (51.4816, -3.1791, "Cardiff, Wales"),
+}
 
 
 def _norm(query: str) -> str:
@@ -77,8 +90,43 @@ async def _mapbox(query: str, country: Optional[str]) -> Optional[LatLngName]:
         return None
 
 
+async def _postcodes_io(query: str) -> Optional[LatLngName]:
+    """Free, keyless UK geocoding (postcodes.io). Tries a full postcode, then an outcode
+    (e.g. 'BS1'), then a plain city-centre lookup. No API key, great UK coverage — this is
+    what makes routing + distance-matching work when no Mapbox token is set."""
+    q = query.strip()
+    slug = q.replace(" ", "").upper()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            # 1) full postcode
+            r = await client.get(f"{_POSTCODES_IO}/postcodes/{slug}")
+            if r.status_code == 200:
+                res = (r.json() or {}).get("result") or {}
+                if res.get("latitude") is not None:
+                    name = ", ".join(x for x in (res.get("admin_ward"), res.get("admin_district"),
+                                                 res.get("country")) if x) or q
+                    return float(res["latitude"]), float(res["longitude"]), name
+            # 2) outcode (first half of a postcode)
+            outcode = slug.split()[0] if " " in q else slug[: max(2, len(slug) - 3)]
+            r = await client.get(f"{_POSTCODES_IO}/outcodes/{outcode}")
+            if r.status_code == 200:
+                res = (r.json() or {}).get("result") or {}
+                if res.get("latitude") is not None:
+                    name = ", ".join(x for x in (res.get("admin_district") or [None])[:1] if x) or q
+                    return float(res["latitude"]), float(res["longitude"]), name or q
+    except Exception as exc:                                  # network, parse, timeout
+        logger.warning("postcodes.io lookup failed for %r — %s", query, exc)
+    # 3) city-centre fallback for launch cities
+    centre = _UK_CITY_CENTRES.get(_norm(query))
+    return centre
+
+
 async def geocode(query: str, country: Optional[str] = "gb") -> Optional[LatLngName]:
-    """Forward-geocode a postcode / city / address. Cache-first, never raises."""
+    """Forward-geocode a postcode / city / address. Cache-first, never raises.
+
+    Provider order: cache → Mapbox (if a token is set) → postcodes.io (free, UK) →
+    a built-in city-centre table. So real users still get coordinates on the free tier.
+    """
     query = (query or "").strip()
     if not query:
         return None
@@ -87,6 +135,8 @@ async def geocode(query: str, country: Optional[str] = "gb") -> Optional[LatLngN
     if cached:
         return cached
     result = await _mapbox(query, country)
+    if not result:
+        result = await _postcodes_io(query)
     if result:
         await _to_cache(key, query, result)
     return result
@@ -99,6 +149,23 @@ async def reverse(lat: float, lng: float) -> Optional[str]:
     if cached and cached.get("name"):
         return cached["name"]
     if not settings.MAPBOX_TOKEN:
+        # Free UK reverse geocode: nearest postcode's district (no key needed).
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(f"{_POSTCODES_IO}/postcodes",
+                                     params={"lon": lng, "lat": lat, "limit": 1})
+            res = ((r.json() or {}).get("result") or []) if r.status_code == 200 else []
+            if res:
+                first = res[0]
+                name = ", ".join(x for x in (first.get("admin_ward"),
+                                             first.get("admin_district")) if x) or first.get("postcode")
+                if name:
+                    await mongo.get_db()[CACHE].update_one(
+                        {"_id": key}, {"$set": {"lat": lat, "lng": lng, "name": name,
+                                                "updated_at": datetime.now(timezone.utc)}}, upsert=True)
+                return name
+        except Exception as exc:
+            logger.warning("postcodes.io reverse failed (%s,%s) — %s", lat, lng, exc)
         return None
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:

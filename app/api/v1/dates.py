@@ -170,14 +170,26 @@ async def start_or_get(req: StartRequest, current_user: dict = Depends(get_curre
     if not await db[mongo.CONNECTIONS].find_one({"user_a_id": a, "user_b_id": b}):
         raise HTTPException(403, "You can only plan a date with someone you've matched with.")
 
+    now = datetime.now(timezone.utc)
+    fresh_fields = {
+        "status": "proposing_time", "slots_a": [], "slots_b": [],
+        "agreed_slot": None, "is_peak": None, "venue_options": [],
+        "picks_a": [], "picks_b": [], "agreed_venue_id": None,
+        "paid_a": False, "paid_b": False, "updated_at": now,
+    }
     plan = await db[PLANS].find_one({"user_a_id": a, "user_b_id": b})
-    if not plan:
-        now = datetime.now(timezone.utc)
+    if plan and plan.get("status") == "cancelled":
+        # Re-planning with the same person after a cancel: reset the existing doc back to a
+        # clean state (there's a unique index on the pair, so we reuse rather than insert).
+        await db[PLANS].update_one(
+            {"_id": plan["_id"]},
+            {"$set": fresh_fields,
+             "$unset": {"booking_id": "", "cancelled_by": "", "refunded": "",
+                        "rescheduled_by": "", "rating_a": "", "rating_b": ""}})
+        plan = await db[PLANS].find_one({"_id": plan["_id"]})
+    elif not plan:
         plan = {"_id": await mongo.next_id("date_plans"), "user_a_id": a, "user_b_id": b,
-                "status": "proposing_time", "slots_a": [], "slots_b": [],
-                "agreed_slot": None, "is_peak": None, "venue_options": [],
-                "picks_a": [], "picks_b": [], "agreed_venue_id": None,
-                "paid_a": False, "paid_b": False, "created_at": now, "updated_at": now}
+                "created_at": now, **fresh_fields}
         await db[PLANS].insert_one(plan)
     return await _state(plan, me)
 
@@ -198,6 +210,13 @@ async def _load(plan_id: int, me: int) -> dict:
     return plan
 
 
+def _reject_if_cancelled(plan: dict) -> None:
+    """A cancelled plan is terminal: block any mutation so it can't be resurrected (e.g. the
+    other person cancelled while you were still submitting times)."""
+    if plan.get("status") == "cancelled":
+        raise HTTPException(409, "This date was cancelled. Start a new plan instead.")
+
+
 @router.get("/{plan_id}")
 async def get_date(plan_id: int, current_user: dict = Depends(get_current_user)):
     return await _state(await _load(plan_id, current_user["_id"]), current_user["_id"])
@@ -211,6 +230,7 @@ async def submit_slots(plan_id: int, slots: list[str] = Body(..., embed=True),
     db = mongo.get_db()
     me = current_user["_id"]
     plan = await _load(plan_id, me)
+    _reject_if_cancelled(plan)
     side = _side(plan, me)
     other = "b" if side == "a" else "a"
 
@@ -249,6 +269,7 @@ async def submit_venue_picks(plan_id: int, venue_ids: list[int] = Body(..., embe
     db = mongo.get_db()
     me = current_user["_id"]
     plan = await _load(plan_id, me)
+    _reject_if_cancelled(plan)
     if plan["status"] not in ("choosing_venue", "venue_agreed"):
         raise HTTPException(409, "Agree a time before picking the restaurant.")
     side = _side(plan, me)
@@ -273,6 +294,7 @@ async def pay(plan_id: int, current_user: dict = Depends(get_current_user)):
     db = mongo.get_db()
     me = current_user["_id"]
     plan = await _load(plan_id, me)
+    _reject_if_cancelled(plan)
     if not plan.get("agreed_venue_id"):
         raise HTTPException(409, "Agree a restaurant before paying.")
     side = _side(plan, me)
