@@ -266,6 +266,37 @@ async def matches(current_user: dict = Depends(get_current_user)):
     return {"count": len(out), "matches": out}
 
 
+class ReportRequest(BaseModel):
+    target_id: int
+    reason: str                      # e.g. "fake_profile", "inappropriate", "harassment", "other"
+    details: Optional[str] = None
+
+
+@router.post("/report", status_code=201)
+async def report_user(payload: ReportRequest, current_user: dict = Depends(get_current_user)):
+    """Report (and effectively block) another user.
+
+    Safety must-have: stores the report for moderation, records a pass so they never
+    resurface in the reporter's feed, and severs any existing match between the two.
+    """
+    db = mongo.get_db()
+    me = current_user["_id"]
+    now = datetime.now(timezone.utc)
+    await db["user_reports"].insert_one({
+        "reporter_id": me, "target_id": payload.target_id,
+        "reason": payload.reason, "details": payload.details,
+        "status": "open", "created_at": now,
+    })
+    # Block: pass them + remove any connection, both directions of visibility.
+    await db[mongo.LIKES].update_one(
+        {"from_user_id": me, "to_user_id": payload.target_id},
+        {"$set": {"action": "pass", "created_at": now}}, upsert=True)
+    a, b = sorted((me, payload.target_id))
+    await db[mongo.CONNECTIONS].delete_one({"user_a_id": a, "user_b_id": b})
+    logger.info("User %s reported %s (%s)", me, payload.target_id, payload.reason)
+    return {"reported": True}
+
+
 @router.delete("/matches/{user_id}", status_code=200)
 async def unmatch(user_id: int, current_user: dict = Depends(get_current_user)):
     """Remove a mutual match. Records a pass so they won't resurface in the feed."""

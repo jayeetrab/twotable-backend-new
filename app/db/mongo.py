@@ -139,3 +139,6 @@ async def ensure_indexes() -> None:
     await db["match_events"].create_index([("user_id", 1), ("created_at", -1)])
     # Date plans: one coordination doc per matched pair.
     await db["date_plans"].create_index([("user_a_id", 1), ("user_b_id", 1)], unique=True)
+    # Safety reports, queried by moderation status and by target.
+    await db["user_reports"].create_index([("status", 1), ("created_at", -1)])
+    await db["user_reports"].create_index("target_id")

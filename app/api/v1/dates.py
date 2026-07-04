@@ -17,7 +17,7 @@ advances. The restaurant shortlist is generated from the fair meeting-point engi
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -219,9 +219,22 @@ async def submit_slots(plan_id: int, slots: list[str] = Body(..., embed=True),
     overlap = sorted(set(slots) & set(plan.get(f"slots_{other}") or []))
     if overlap:
         agreed = overlap[0]
-        update.update({"agreed_slot": agreed, "is_peak": _is_peak(agreed), "status": "choosing_venue"})
-        plan.update(update)
-        plan["venue_options"] = update["venue_options"] = await _generate_venue_options(plan)
+        update.update({"agreed_slot": agreed, "is_peak": _is_peak(agreed)})
+        # Where the plan goes next depends on what already exists (reschedule keeps the
+        # venue and payments, so re-agreeing a time jumps straight back to confirmed).
+        if plan.get("agreed_venue_id") and plan.get("paid_a") and plan.get("paid_b"):
+            update["status"] = "confirmed"
+            if plan.get("booking_id"):
+                await db[mongo.BOOKINGS].update_one(
+                    {"_id": plan["booking_id"]},
+                    {"$set": {"status": "confirmed", "slot": agreed,
+                              "is_peak": _is_peak(agreed), "price": _price(_is_peak(agreed))}})
+        elif plan.get("agreed_venue_id"):
+            update["status"] = "venue_agreed"
+        else:
+            update["status"] = "choosing_venue"
+            plan.update(update)
+            plan["venue_options"] = update["venue_options"] = await _generate_venue_options(plan)
     else:
         update["status"] = "proposing_time"
     await db[PLANS].update_one({"_id": plan_id}, {"$set": update})
@@ -283,9 +296,93 @@ async def pay(plan_id: int, current_user: dict = Depends(get_current_user)):
     return await _state(plan, me)
 
 
+def _slot_dt(plan: dict) -> Optional[datetime]:
+    try:
+        return datetime.fromisoformat(plan["agreed_slot"]).replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
 @router.delete("/{plan_id}")
 async def cancel(plan_id: int, current_user: dict = Depends(get_current_user)):
-    await _load(plan_id, current_user["_id"])
-    await mongo.get_db()[PLANS].update_one(
-        {"_id": plan_id}, {"$set": {"status": "cancelled", "updated_at": datetime.now(timezone.utc)}})
-    return {"cancelled": True}
+    """Cancel a plan or a confirmed reservation.
+
+    Refund policy (matches the in-app fine print): a paid, confirmed date cancelled
+    more than 24 hours before the slot is refunded in full; later than that it isn't.
+    """
+    db = mongo.get_db()
+    me = current_user["_id"]
+    plan = await _load(plan_id, me)
+    if plan["status"] == "cancelled":
+        return {"cancelled": True, "refunded": bool(plan.get("refunded"))}
+
+    paid = plan.get("paid_a") or plan.get("paid_b")
+    slot = _slot_dt(plan)
+    refunded = bool(paid and slot and (slot - datetime.now(timezone.utc)) > timedelta(hours=24))
+
+    now = datetime.now(timezone.utc)
+    await db[PLANS].update_one(
+        {"_id": plan_id},
+        {"$set": {"status": "cancelled", "cancelled_by": me, "refunded": refunded,
+                  "updated_at": now}})
+    if plan.get("booking_id"):
+        await db[mongo.BOOKINGS].update_one(
+            {"_id": plan["booking_id"]}, {"$set": {"status": "cancelled", "refunded": refunded}})
+    other = plan["user_b_id"] if _side(plan, me) == "a" else plan["user_a_id"]
+    await events.log_event("cancelled", me, target_id=other, venue_id=plan.get("agreed_venue_id"))
+    logger.info("Plan %s cancelled by %s (refunded=%s)", plan_id, me, refunded)
+    return {"cancelled": True, "refunded": refunded}
+
+
+@router.post("/{plan_id}/reschedule")
+async def reschedule(plan_id: int, current_user: dict = Depends(get_current_user)):
+    """Re-open time coordination: keeps the venue and any payments, clears the slot.
+
+    Both people re-propose times through the normal flow; the plan (and booking) update
+    to the newly agreed slot when they overlap again.
+    """
+    db = mongo.get_db()
+    me = current_user["_id"]
+    plan = await _load(plan_id, me)
+    if plan["status"] == "cancelled":
+        raise HTTPException(409, "This date was cancelled; start a new plan instead.")
+
+    now = datetime.now(timezone.utc)
+    await db[PLANS].update_one(
+        {"_id": plan_id},
+        {"$set": {"status": "proposing_time", "slots_a": [], "slots_b": [],
+                  "agreed_slot": None, "is_peak": None,
+                  "rescheduled_by": me, "updated_at": now}})
+    if plan.get("booking_id"):
+        await db[mongo.BOOKINGS].update_one(
+            {"_id": plan["booking_id"]}, {"$set": {"status": "rescheduling", "slot": None}})
+    plan.update({"status": "proposing_time", "slots_a": [], "slots_b": [],
+                 "agreed_slot": None, "is_peak": None})
+    return await _state(plan, me)
+
+
+class RateRequest(BaseModel):
+    score: int  # 1..5
+
+
+@router.post("/{plan_id}/rate")
+async def rate(plan_id: int, req: RateRequest, current_user: dict = Depends(get_current_user)):
+    """Post-date rating. Feeds the outcome funnel the matcher learns from
+    (attended → rated → rematch-worthy)."""
+    if not 1 <= req.score <= 5:
+        raise HTTPException(422, "score must be 1-5")
+    db = mongo.get_db()
+    me = current_user["_id"]
+    plan = await _load(plan_id, me)
+    if plan["status"] != "confirmed":
+        raise HTTPException(409, "Only confirmed dates can be rated.")
+
+    side = _side(plan, me)
+    other = plan["user_b_id"] if side == "a" else plan["user_a_id"]
+    await db[PLANS].update_one(
+        {"_id": plan_id},
+        {"$set": {f"rating_{side}": req.score, "updated_at": datetime.now(timezone.utc)}})
+    await events.log_event("attended", me, target_id=other, venue_id=plan.get("agreed_venue_id"))
+    await events.log_event("rated", me, target_id=other, venue_id=plan.get("agreed_venue_id"),
+                           meta={"score": req.score})
+    return {"rated": True, "score": req.score}
