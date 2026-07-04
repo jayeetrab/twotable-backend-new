@@ -266,12 +266,28 @@ async def quick_booking(payload: QuickBookingRequest, current_user: dict = Depen
 
 @router.get("/mine")
 async def my_bookings(current_user: dict = Depends(get_current_user)):
-    """The current user's bookings, newest first."""
+    """The current user's bookings, newest first, enriched with venue photo/coords so
+    the app can render them as date cards. Includes bookings where I'm the partner."""
     db = mongo.get_db()
+    me = current_user["_id"]
     docs = await db[mongo.BOOKINGS].find(
-        {"user_id": current_user["_id"]}
+        {"$or": [{"user_id": me}, {"partner_id": me}]}
     ).sort("created_at", -1).to_list(length=100)
-    return {"count": len(docs), "bookings": [{**b, "id": b["_id"]} for b in docs]}
+
+    venue_ids = list({b["venue_id"] for b in docs if b.get("venue_id") is not None})
+    venues = {v["_id"]: v async for v in db[mongo.VENUES].find({"_id": {"$in": venue_ids}})}
+
+    out = []
+    for b in docs:
+        v = venues.get(b.get("venue_id")) or {}
+        photos = [mongo.photo_url(p) for p in (v.get("photos") or [])]
+        out.append({
+            **b, "id": b["_id"],
+            "venue_name": b.get("venue_name") or v.get("name"),
+            "photo_url": photos[0] if photos else None,
+            "lat": v.get("lat"), "lng": v.get("lng"),
+        })
+    return {"count": len(out), "bookings": out}
 
 
 @router.post("/{booking_id}/confirm", response_model=BookingRead)
