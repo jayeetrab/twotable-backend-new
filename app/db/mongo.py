@@ -44,12 +44,16 @@ _db: Optional[AsyncIOMotorDatabase] = None
 
 
 def connect() -> AsyncIOMotorDatabase:
-    """Create the shared client/database handle. Idempotent."""
-    global _client, _db
-    if _db is None:
-        _client = AsyncIOMotorClient(settings.MONGODB_URI, tz_aware=True)
-        _db = _client[settings.MONGODB_DB]
-    return _db
+    global client, db
+    if db is None:
+        client = AsyncIOMotorClient(
+            settings.MONGODB_URI,
+            tz_aware=True,
+            serverSelectionTimeoutMS=8000,
+            connectTimeoutMS=8000,
+        )
+        db = client[settings.MONGODB_DB]
+    return db
 
 
 def close() -> None:
