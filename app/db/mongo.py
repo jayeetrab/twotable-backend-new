@@ -44,16 +44,16 @@ _db: Optional[AsyncIOMotorDatabase] = None
 
 
 def connect() -> AsyncIOMotorDatabase:
-    global client, db
-    if db is None:
-        client = AsyncIOMotorClient(
+    global _client, _db
+    if _db is None:
+        _client = AsyncIOMotorClient(
             settings.MONGODB_URI,
             tz_aware=True,
             serverSelectionTimeoutMS=8000,
             connectTimeoutMS=8000,
         )
-        db = client[settings.MONGODB_DB]
-    return db
+        _db = _client[settings.MONGODB_DB]
+    return _db
 
 
 def close() -> None:
