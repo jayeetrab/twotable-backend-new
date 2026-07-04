@@ -105,7 +105,7 @@ def uploader_block(coll: str, doc: dict, label: str):
 st.title("📸 TwoTable Image Uploader")
 st.caption(f"Connected to **{MONGODB_DB}** · photos served from {PUBLIC_BASE_URL}/api/v1/photos/<id>")
 
-tab_venues, tab_users = st.tabs(["🍽️ Venues", "👤 Daters / Users"])
+tab_venues, tab_users, tab_mod = st.tabs(["🍽️ Venues", "👤 Daters / Users", "🛡️ Moderation"])
 
 with tab_venues:
     st.subheader("Venue photos")
@@ -158,3 +158,47 @@ with tab_users:
                 db[PROFILES].update_one({"_id": profile["_id"]}, {"$push": {"photos": {"$each": new_ids}}})
             st.success(f"Uploaded {len(new_ids)} photo(s) for {user.get('full_name')}.")
             st.rerun()
+
+with tab_mod:
+    st.subheader("Safety reports")
+    reports = list(db["user_reports"].find().sort("created_at", -1).limit(200))
+    open_reports = [r for r in reports if r.get("status") == "open"]
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Open reports", len(open_reports))
+    c2.metric("Total reports", len(reports))
+    c3.metric("Users reported", len({r["target_id"] for r in reports}))
+
+    if not reports:
+        st.info("No reports yet. Reports filed in the app appear here for review.")
+    for r in reports:
+        reporter = db[USERS].find_one({"_id": r["reporter_id"]}) or {}
+        target = db[USERS].find_one({"_id": r["target_id"]}) or {}
+        target_reports = db["user_reports"].count_documents({"target_id": r["target_id"]})
+        is_open = r.get("status") == "open"
+        badge = "🔴 OPEN" if is_open else f"✅ {r.get('status', 'closed').upper()}"
+
+        with st.expander(
+            f"{badge} · {target.get('full_name') or f'user #{r['target_id']}'} "
+            f"reported for **{r.get('reason', '?')}** "
+            f"({r['created_at']:%d %b %Y %H:%M})"
+        ):
+            st.write(f"**Reporter:** {reporter.get('full_name') or '?'} (#{r['reporter_id']}) · "
+                     f"**Target:** {target.get('full_name') or '?'} (#{r['target_id']}) · "
+                     f"**Reports against this user:** {target_reports} · "
+                     f"**Target account active:** {target.get('is_active', '?')}")
+            if r.get("details"):
+                st.write(f"**Details:** {r['details']}")
+
+            b1, b2, b3 = st.columns(3)
+            if b1.button("✅ Mark resolved", key=f"res_{r['_id']}", disabled=not is_open):
+                db["user_reports"].update_one({"_id": r["_id"]}, {"$set": {"status": "resolved"}})
+                st.rerun()
+            if b2.button("🗑 Dismiss (no action)", key=f"dis_{r['_id']}", disabled=not is_open):
+                db["user_reports"].update_one({"_id": r["_id"]}, {"$set": {"status": "dismissed"}})
+                st.rerun()
+            if target and b3.button("🚫 Deactivate target account", key=f"ban_{r['_id']}",
+                                    disabled=not target.get("is_active", True)):
+                db[USERS].update_one({"_id": r["target_id"]}, {"$set": {"is_active": False}})
+                db["user_reports"].update_one({"_id": r["_id"]}, {"$set": {"status": "actioned"}})
+                st.rerun()
