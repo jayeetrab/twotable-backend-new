@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -313,20 +313,83 @@ async def confirm_booking(booking_id: int, current_user: dict = Depends(get_curr
     return _booking_read(booking)
 
 
-@router.delete("/{booking_id}", status_code=204)
-async def cancel_booking(booking_id: int, current_user: dict = Depends(get_current_user)):
+async def _owned_booking(booking_id: int, user_id: int) -> dict:
+    """Load a booking the user owns: direct owner, partner, or match participant."""
     db = mongo.get_db()
     booking = await db[mongo.BOOKINGS].find_one({"_id": booking_id})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    match = await db[mongo.MATCHES].find_one({"_id": booking["match_id"]})
-    if not match or current_user["_id"] not in (match.get("user_a_id"), match.get("user_b_id")):
-        raise HTTPException(status_code=403, detail="Not your booking")
+    if user_id in (booking.get("user_id"), booking.get("partner_id")):
+        return booking
+    if booking.get("match_id"):
+        match = await db[mongo.MATCHES].find_one({"_id": booking["match_id"]})
+        if match and user_id in (match.get("user_a_id"), match.get("user_b_id")):
+            return booking
+    raise HTTPException(status_code=403, detail="Not your booking")
+
+
+def _booking_when(booking: dict) -> Optional[datetime]:
+    """The reservation moment, from either a plan slot or booked_date/booked_time."""
+    if booking.get("slot"):
+        try:
+            return datetime.fromisoformat(booking["slot"]).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    if booking.get("booked_date"):
+        try:
+            t = str(booking.get("booked_time") or "19:00:00")[:5]
+            return datetime.fromisoformat(f"{booking['booked_date']}T{t}").replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    return None
+
+
+@router.delete("/{booking_id}")
+async def cancel_booking(booking_id: int, current_user: dict = Depends(get_current_user)):
+    """Cancel a reservation. Policy: >24h before the table time → full refund."""
+    db = mongo.get_db()
+    booking = await _owned_booking(booking_id, current_user["_id"])
+    if booking.get("status") == BookingStatus.cancelled.value:
+        return {"cancelled": True, "refunded": bool(booking.get("refunded"))}
+
+    when = _booking_when(booking)
+    refunded = bool(when and (when - datetime.now(timezone.utc)) > timedelta(hours=24))
+    await db[mongo.BOOKINGS].update_one(
+        {"_id": booking_id},
+        {"$set": {"status": BookingStatus.cancelled.value, "refunded": refunded,
+                  "cancelled_by": current_user["_id"],
+                  "updated_at": datetime.now(timezone.utc)}},
+    )
+    logger.info("Booking %s cancelled by %s (refunded=%s)",
+                booking_id, current_user["_id"], refunded)
+    return {"cancelled": True, "refunded": refunded}
+
+
+class BookingRescheduleRequest(BaseModel):
+    date: str   # "2026-07-12"
+    time: str   # "19:30:00"
+
+
+@router.patch("/{booking_id}")
+async def reschedule_booking(
+    booking_id: int,
+    payload: BookingRescheduleRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Move a direct table booking to a new date/time (keeps the venue)."""
+    db = mongo.get_db()
+    booking = await _owned_booking(booking_id, current_user["_id"])
+    if booking.get("status") == BookingStatus.cancelled.value:
+        raise HTTPException(status_code=409, detail="This booking was cancelled; book again instead.")
 
     await db[mongo.BOOKINGS].update_one(
         {"_id": booking_id},
-        {"$set": {"status": BookingStatus.cancelled.value, "updated_at": datetime.now(timezone.utc)}},
+        {"$set": {"booked_date": payload.date, "booked_time": payload.time,
+                  "status": BookingStatus.confirmed.value,
+                  "updated_at": datetime.now(timezone.utc)}},
     )
+    logger.info("Booking %s rescheduled to %s %s", booking_id, payload.date, payload.time)
+    return {"rescheduled": True, "date": payload.date, "time": payload.time}
 
 
 @router.get("/{booking_id}", response_model=BookingRead)
