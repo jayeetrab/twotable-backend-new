@@ -23,6 +23,9 @@ httpx==0.28.1
 sentence-transformers==3.4.1
 numpy==2.2.2
 
+# Selfie analysis for profile verification (face detection; headless = no GUI deps)
+opencv-python-headless==4.10.0.84
+
 # Payments (optional — booking deposit). Safe to omit in dev.
 stripe==11.4.0
 

@@ -4,11 +4,11 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, status
 
 from app.core.deps import get_current_user
 from app.db import mongo
-from app.services import geocoding
+from app.services import face, geocoding
 from app.schemas.profile import (
     AvailabilitySetRequest,
     AvailabilitySlotRead,
@@ -292,3 +292,69 @@ async def delete_my_account(current_user: dict = Depends(get_current_user)):
     await db[mongo.USERS].delete_one({"_id": me})
     logger.info("Account deleted for user_id=%s", me)
     return {"deleted": True}
+
+
+# ── Profile verification (selfie analysis) ────────────────────────────────────
+
+@router.get("/verification")
+async def verification_status(current_user: dict = Depends(get_current_user)):
+    """Where the current user is in verification: none / pending / verified / rejected."""
+    db = mongo.get_db()
+    u = await db[mongo.USERS].find_one({"_id": current_user["_id"]}) or {}
+    return {
+        "verified": bool(u.get("verified")),
+        "status": u.get("verification_status") or ("verified" if u.get("verified") else "none"),
+        "reason": u.get("verification_reason"),
+    }
+
+
+@router.post("/verify")
+async def submit_verification(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
+    """Submit a selfie for verification.
+
+    The backend analyses the selfie (one clear, front-facing face) and, on a pass, grants the
+    verified badge immediately. If OpenCV isn't available at runtime the selfie is stored and
+    the account is marked `pending` for manual review in the admin tool.
+    """
+    db = mongo.get_db()
+    me = current_user["_id"]
+    data = await file.read()
+    if not data:
+        raise HTTPException(422, "Empty file")
+    if len(data) > 12 * 1024 * 1024:
+        raise HTTPException(413, "Selfie too large (max 12MB)")
+
+    result = face.analyse_selfie(data)
+
+    # Keep the selfie for audit / manual review (not shown on the public profile).
+    now = datetime.now(timezone.utc)
+    selfie_id = await mongo.gridfs().upload_from_stream(
+        f"selfie_{me}.jpg", data,
+        metadata={"user_id": me, "kind": "verification_selfie",
+                  "content_type": file.content_type or "image/jpeg", "created_at": now})
+
+    if not result.available:
+        # No analyser available → queue for manual review rather than guess.
+        update = {"verification_status": "pending", "verification_selfie": selfie_id,
+                  "verification_reason": None, "verified": False, "updated_at": now}
+        await db[mongo.USERS].update_one({"_id": me}, {"$set": update})
+        return {"verified": False, "status": "pending",
+                "message": "Thanks! Your selfie is in review and your badge will appear soon."}
+
+    if result.ok:
+        update = {"verified": True, "verification_status": "verified",
+                  "verification_selfie": selfie_id, "verification_reason": None,
+                  "verified_at": now, "updated_at": now}
+        await db[mongo.USERS].update_one({"_id": me}, {"$set": update})
+        logger.info("User %s verified via selfie", me)
+        return {"verified": True, "status": "verified",
+                "message": "You're verified! The badge now shows on your profile."}
+
+    update = {"verified": False, "verification_status": "rejected",
+              "verification_selfie": selfie_id, "verification_reason": result.reason,
+              "updated_at": now}
+    await db[mongo.USERS].update_one({"_id": me}, {"$set": update})
+    return {"verified": False, "status": "rejected", "message": result.reason}
