@@ -291,6 +291,38 @@ async def matches(current_user: dict = Depends(get_current_user)):
     return {"count": len(out), "matches": out}
 
 
+@router.get("/likes-received")
+async def likes_received(current_user: dict = Depends(get_current_user)):
+    """People who liked the current user but whom they haven't actioned yet.
+
+    These are pending admirers: liking one back creates the match instantly. We exclude
+    anyone already matched (they're in /matches) or whom the user already passed on.
+    """
+    db = mongo.get_db()
+    me = current_user["_id"]
+
+    # Everyone who liked me.
+    admirer_ids = [d["from_user_id"] async for d in db[mongo.LIKES].find(
+        {"to_user_id": me, "action": "like"})]
+    if not admirer_ids:
+        return {"count": 0, "profiles": []}
+
+    # Exclude people I've already actioned (liked back = matched, or passed).
+    actioned = {d["to_user_id"] async for d in db[mongo.LIKES].find(
+        {"from_user_id": me, "to_user_id": {"$in": admirer_ids}})}
+    pending = [i for i in admirer_ids if i not in actioned]
+    if not pending:
+        return {"count": 0, "profiles": []}
+
+    users = {u["_id"]: u async for u in db[mongo.USERS].find(
+        {"_id": {"$in": pending}, "paused": {"$ne": True}})}
+    profs = {p["user_id"]: p async for p in db[mongo.PROFILES].find(
+        {"user_id": {"$in": pending}})}
+    # Newest admirers first.
+    out = [_card(users[i], profs.get(i)) for i in reversed(pending) if i in users]
+    return {"count": len(out), "profiles": out}
+
+
 class ReportRequest(BaseModel):
     target_id: int
     reason: str                      # e.g. "fake_profile", "inappropriate", "harassment", "other"
