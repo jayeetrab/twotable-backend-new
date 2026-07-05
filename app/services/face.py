@@ -7,6 +7,10 @@ one clear, front-facing, reasonably large face. That blocks the obvious junk (no
 group photos, tiny faces, screenshots of text) and is what earns the verified badge.
 
 Uses OpenCV's Haar frontal-face cascade (ships with opencv-python-headless — light, no GPU).
+IMPORTANT: OpenCV is imported *lazily*, only when a selfie is actually analysed — never at
+startup. On a small (512MB) instance, importing cv2 at boot alongside the other deps can push
+the worker over its memory limit and crash-loop it, taking every endpoint down. Keeping the
+import lazy means the whole API boots light and stays up; only /profile/verify pays the cost.
 Everything is graceful: if OpenCV isn't installed the caller falls back to manual review.
 """
 from __future__ import annotations
@@ -17,15 +21,28 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-try:
-    import cv2
-    import numpy as np
-    _CASCADE = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    _AVAILABLE = not _CASCADE.empty()
-except Exception as exc:                                   # opencv missing / cascade unreadable
-    logger.warning("Face analysis unavailable: %s", exc)
-    _AVAILABLE = False
+_cascade = None          # cached cv2.CascadeClassifier after first load
+_load_failed = False     # remember if OpenCV/cascade is unavailable so we don't retry every call
+
+
+def _get_cascade():
+    """Load the Haar cascade on first use (imports cv2 lazily). Returns None if unavailable."""
+    global _cascade, _load_failed
+    if _cascade is not None or _load_failed:
+        return _cascade
+    try:
+        import cv2
+        clf = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+        if clf.empty():
+            _load_failed = True
+            return None
+        _cascade = clf
+        return _cascade
+    except Exception as exc:                              # opencv missing / cascade unreadable
+        logger.warning("Face analysis unavailable: %s", exc)
+        _load_failed = True
+        return None
 
 
 @dataclass
@@ -38,9 +55,12 @@ class FaceResult:
 
 def analyse_selfie(image_bytes: bytes) -> FaceResult:
     """Return whether a selfie passes the verification bar: exactly one clear, front-facing face."""
-    if not _AVAILABLE:
+    cascade = _get_cascade()
+    if cascade is None:
         return FaceResult(ok=False, available=False, faces=0, reason=None)
     try:
+        import cv2
+        import numpy as np
         arr = np.frombuffer(image_bytes, dtype=np.uint8)
         img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
         if img is None:
@@ -49,7 +69,7 @@ def analyse_selfie(image_bytes: bytes) -> FaceResult:
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # Face must be a meaningful fraction of the frame (a real selfie), not a tiny speck.
         min_side = max(80, int(min(h, w) * 0.15))
-        faces = _CASCADE.detectMultiScale(
+        faces = cascade.detectMultiScale(
             gray, scaleFactor=1.1, minNeighbors=6, minSize=(min_side, min_side))
         n = len(faces)
         if n == 0:
