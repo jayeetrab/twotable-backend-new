@@ -55,6 +55,29 @@ def _age_from(dob: Optional[str]) -> Optional[int]:
     return today.year - d.year - ((today.month, today.day) < (d.month, d.day))
 
 
+def _zodiac(dob: Optional[str]) -> Optional[str]:
+    """Western zodiac sign from a date of birth (so profiles can show it without exposing DOB)."""
+    if not dob:
+        return None
+    try:
+        d = date.fromisoformat(str(dob)[:10])
+    except ValueError:
+        return None
+    md = (d.month, d.day)
+    # (start_month, start_day, sign) — a birthday on/after each cutoff belongs to that sign.
+    cutoffs = [
+        (1, 1, "Capricorn"), (1, 20, "Aquarius"), (2, 19, "Pisces"), (3, 21, "Aries"),
+        (4, 20, "Taurus"), (5, 21, "Gemini"), (6, 21, "Cancer"), (7, 23, "Leo"),
+        (8, 23, "Virgo"), (9, 23, "Libra"), (10, 23, "Scorpio"), (11, 22, "Sagittarius"),
+        (12, 22, "Capricorn"),
+    ]
+    sign = "Capricorn"
+    for month, day, name in cutoffs:
+        if md >= (month, day):
+            sign = name
+    return sign
+
+
 def _card(user: dict, profile: Optional[dict]) -> dict:
     """Build a discovery card from an already-loaded user + profile (no DB I/O)."""
     profile = profile or {}
@@ -71,6 +94,8 @@ def _card(user: dict, profile: Optional[dict]) -> dict:
         "user_id": user["_id"],
         "name": user.get("full_name") or "Someone",
         "age": _age_from(dob) or 0,
+        "star_sign": _zodiac(dob),
+        "verified": bool(user.get("verified") or profile.get("verified")),
         "occupation": occupation,
         "interests": interests[:6],
         "distance": city,
