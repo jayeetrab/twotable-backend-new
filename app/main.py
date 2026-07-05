@@ -15,6 +15,7 @@ from app.api.v1.photos import router as photos_router
 from app.api.v1.tonight import router as tonight_router
 from app.api.v1.geo import router as geo_router
 from app.api.v1.dates import router as dates_router
+from app.api.v1.notifications import router as notifications_router
 
 
 @asynccontextmanager
@@ -61,6 +62,7 @@ app.include_router(photos_router, prefix="/api/v1")
 app.include_router(tonight_router, prefix="/api/v1")
 app.include_router(geo_router, prefix="/api/v1")
 app.include_router(dates_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["meta"])
