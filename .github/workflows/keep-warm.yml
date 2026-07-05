@@ -1,0 +1,30 @@
+name: Keep backend warm
+
+# Render's free tier spins the instance down after ~15 minutes of inactivity, and waking it
+# again takes ~40s — which makes the app feel broken on the first request. This workflow pings
+# /health on a schedule so the instance stays awake, so real users never hit a cold start.
+#
+# Note: GitHub's scheduled runs can be delayed by a few minutes under load; for guaranteed
+# warmth, also point a free external monitor (uptimerobot.com / cron-job.org) at the same URL,
+# or upgrade the Render instance (paid tiers never sleep).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch: {}        # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 \
+              https://twotable-backend-new.onrender.com/health || echo "000")
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "health check did not return 200"
+          exit 1
