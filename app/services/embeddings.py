@@ -31,13 +31,49 @@ def _get_model():
     return _model
 
 
+def _container_memory_mb() -> Optional[float]:
+    """Best-effort container memory limit (MB). Reads cgroup limits (how Render/Docker cap
+    RAM); returns None if it can't tell. Used to auto-protect small instances."""
+    for path in ("/sys/fs/cgroup/memory.max",                       # cgroup v2
+                 "/sys/fs/cgroup/memory/memory.limit_in_bytes"):    # cgroup v1
+        try:
+            with open(path) as f:
+                raw = f.read().strip()
+            if raw and raw != "max":
+                mb = int(raw) / (1024 * 1024)
+                if 0 < mb < 1_000_000:                              # ignore "unlimited" sentinels
+                    return mb
+        except Exception:
+            continue
+    return None
+
+
+# Loading the sentence-transformers model needs ~1GB. Below this we refuse to load it even if
+# EMBEDDING_PROVIDER=local, because trying would OOM the worker and hang the feed.
+_MIN_MODEL_MEMORY_MB = 1200
+_forced_off_logged = False
+
+
 def _disabled() -> bool:
-    """EMBEDDING_PROVIDER=off skips the model entirely (e.g. low-RAM deploys).
+    """True when semantic embeddings should be skipped — either configured off, or the
+    instance is too small to safely load the model.
 
     Matching degrades gracefully: semantic similarity goes neutral while every other
     signal (reciprocity, lifestyle, distance, recency) keeps ranking the feed.
     """
-    return settings.EMBEDDING_PROVIDER.lower() in ("off", "none", "disabled")
+    if settings.EMBEDDING_PROVIDER.lower() in ("off", "none", "disabled"):
+        return True
+    mem = _container_memory_mb()
+    if mem is not None and mem < _MIN_MODEL_MEMORY_MB:
+        global _forced_off_logged
+        if not _forced_off_logged:
+            logger.warning(
+                "EMBEDDING_PROVIDER=%s but only ~%dMB RAM (< %dMB) — forcing embeddings OFF to "
+                "avoid OOM. Matching uses non-semantic signals. Use a >=2GB instance for semantics.",
+                settings.EMBEDDING_PROVIDER, int(mem), _MIN_MODEL_MEMORY_MB)
+            _forced_off_logged = True
+        return True
+    return False
 
 
 async def embed(text: str) -> List[float]:

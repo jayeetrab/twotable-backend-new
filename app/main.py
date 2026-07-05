@@ -68,9 +68,12 @@ app.include_router(notifications_router, prefix="/api/v1")
 @app.get("/health", tags=["meta"])
 async def health_check():
     from app.core.config import settings
+    from app.services import embeddings
     db = mongo.get_db()
     await db.command("ping")
-    # `embedding_provider` surfaces the effective value so we can confirm the free-tier
-    # instance isn't trying to load the heavy model (which would hang the discovery feed).
+    # `embeddings_active` is the value that matters: False means the heavy model won't load
+    # (configured off, or auto-disabled on a small instance) so the discovery feed stays fast.
     return {"status": "ok", "version": app.version,
-            "embedding_provider": settings.EMBEDDING_PROVIDER}
+            "embedding_provider": settings.EMBEDDING_PROVIDER,
+            "embeddings_active": not embeddings._disabled(),
+            "container_mb": embeddings._container_memory_mb()}
