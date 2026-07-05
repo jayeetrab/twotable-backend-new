@@ -31,7 +31,12 @@ class Settings(BaseSettings):
     # bge-small-en-v1.5 is a much stronger 384-dim model than MiniLM (top MTEB for its size),
     # still CPU-friendly, offline, and no API key. Dim stays 384 so stored vectors are
     # format-compatible (venues must be re-embedded once after switching — see scripts).
-    EMBEDDING_PROVIDER: str = "local"
+    #
+    # Default is "off" so a small (512MB free-tier) instance never tries to download/load the
+    # ~130MB model, which would OOM the worker and hang the discovery feed. Matching degrades
+    # gracefully to the non-semantic signals. Set EMBEDDING_PROVIDER=local on a >=2GB instance
+    # to restore full semantic intent matching.
+    EMBEDDING_PROVIDER: str = "off"
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
     EMBEDDING_DIM: int = 384
 
