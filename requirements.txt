@@ -23,8 +23,11 @@ httpx==0.28.1
 sentence-transformers==3.4.1
 numpy==2.2.2
 
-# Selfie analysis for profile verification (face detection; headless = no GUI deps)
-opencv-python-headless==4.10.0.84
+# Selfie analysis for profile verification (OpenCV Haar face detection). Commented out on the
+# free tier: the wheel bloats the build and cv2 can OOM a 512MB worker. Without it, verification
+# gracefully degrades to "pending review" (see app/services/face.py). Uncomment on a >=1GB
+# instance to enable automatic selfie verification:
+# opencv-python-headless==4.10.0.84
 
 # Payments (optional — booking deposit). Safe to omit in dev.
 stripe==11.4.0
