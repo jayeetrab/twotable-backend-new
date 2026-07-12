@@ -1,0 +1,38 @@
+# TwoTable backend on EC2: the app + Caddy (automatic HTTPS via Let's Encrypt).
+# Mongo is external (Atlas), so there's no DB service here.
+#
+#   1) Point a DNS A record for $DOMAIN at this EC2 instance's public IP.
+#   2) Fill .env (copy from .env.example) — set DOMAIN and PUBLIC_BASE_URL=https://$DOMAIN.
+#   3) docker compose up -d      # Caddy fetches a TLS cert on first boot.
+
+services:
+  app:
+    build: .
+    restart: always
+    env_file: .env
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # persisted TLS certs — survives restarts, avoids rate limits
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

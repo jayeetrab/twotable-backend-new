@@ -1,0 +1,5 @@
+# Auto-HTTPS reverse proxy. Caddy provisions and renews the Let's Encrypt cert for $DOMAIN
+# on its own — nothing else to configure.
+{$DOMAIN} {
+	reverse_proxy app:8000
+}
