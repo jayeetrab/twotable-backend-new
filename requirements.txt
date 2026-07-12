@@ -19,8 +19,10 @@ python-multipart==0.0.20
 # HTTP client
 httpx==0.28.1
 
-# Embeddings — local (no API key needed), used for in-app cosine matching
-sentence-transformers==3.4.1
+# Embeddings — local semantic matching. Commented out: it pulls in torch (~2GB), and the app
+# auto-disables embeddings under ~1.2GB RAM anyway (EMBEDDING_PROVIDER=off), so on a 1GB box
+# it's pure dead weight. Uncomment on a >=2GB instance to enable semantic matching.
+# sentence-transformers==3.4.1
 numpy==2.2.2
 
 # Selfie analysis for profile verification (OpenCV Haar face detection). Commented out on the
